@@ -5,34 +5,93 @@ import random
 from config import *
 from os import path
 import cv2
+from assets_loader import *
 
-def init_screen(screen):
+def init_screen(screen, assets):
     clock = pygame.time.Clock()
+    
+    fade = pygame.Surface((LARGURA, ALTURA))
+    fade.fill((0, 0, 0))
+    alpha = 255 
 
-    background = pygame.image.load(path.join(IMG_DIR, "Roman_warrior_fighting_lion.jpeg")).convert()
-    background = pygame.transform.scale(background,(LARGURA,ALTURA))
-    background_rect = background.get_rect()
 
+    video = cv2.VideoCapture(path.join(IMG_DIR, "Video Inicial.mp4"))
+
+    txt_titulo = assets[TXT_TITULO]
+    txt_titulo_rect = txt_titulo.get_rect(topleft=(-60, 20))
+
+    txt_batalhar = assets[TXT_BATALHAR]
+    txt_batalhar_rect = txt_batalhar.get_rect(topleft=(20, 370))
+    hover_batalhar = txt_batalhar.copy()
+    hover_batalhar.fill((200, 150, 150), special_flags=pygame.BLEND_RGBA_MULT)
+    hover_batalhar = pygame.transform.smoothscale(hover_batalhar,(650*1.03,222*1.03))
+
+    txt_sair = assets[TXT_SAIR]
+    txt_sair_rect = txt_sair.get_rect(topleft=(30, 610))
+    hover_sair = txt_sair.copy()
+    hover_sair.fill((200, 150, 150), special_flags=pygame.BLEND_RGBA_MULT)
+    hover_sair = pygame.transform.smoothscale(hover_sair,(320*1.03,184*1.03))
+
+    pygame.mixer.music.load(path.join(SND_DIR, 'Musica-Epica.mp3'))
+    pygame.mixer.music.set_volume(0.3)
+    pygame.mixer.music.play(-1)
+    som_video = pygame.mixer.Sound(path.join(SND_DIR, 'Rudgio Leão.ogg'))
+    pygame.mixer.music.set_volume(0.6)
+    som_video.play(-1)
     running = True
+    state = GAME
     
     while running:
-    
-        clock.tick(FPS)
+        clock.tick(FPS/2)
+
+        if alpha > 0:
+            alpha -= 5  # velocidade do fade
+            fade.set_alpha(alpha)
+            screen.blit(fade, (0, 0))
+        mouse_pos = pygame.mouse.get_pos()
+        is_hover_bat = txt_batalhar_rect.collidepoint(mouse_pos)
+        is_hover_sair = txt_sair_rect.collidepoint(mouse_pos)
+
+        if is_hover_sair or is_hover_bat:
+            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
+        else:
+            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+
 
         for event in pygame.event.get():
-
-            if event.type == pygame.KEYDOWN:
-                state = QUIT
-                running = False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if txt_batalhar_rect.collidepoint(event.pos):
+                    state = GAME
+                    running = False
+                elif txt_sair_rect.collidepoint(event.pos):
+                    state = QUIT
+                    running = False
             if event.type == pygame.QUIT:
                 state = QUIT
                 running = False
 
-        screen.blit(background,background_rect)
+        ret, frame = video.read()
+        if not ret:
+            video.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            continue
+
+        frame = cv2.resize(frame, (1280, 720))
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frame_surface = pygame.transform.scale(pygame.surfarray.make_surface(frame.swapaxes(0, 1)), (LARGURA, ALTURA))
+
+        
+        screen.blit(frame_surface, (0, 0))
+        screen.blit(txt_titulo, txt_titulo_rect)
+        screen.blit(hover_batalhar if is_hover_bat else txt_batalhar, txt_batalhar_rect)
+        screen.blit(hover_sair if is_hover_sair else txt_sair, txt_sair_rect)
+        screen.blit(fade,(0,0))
+
         pygame.display.flip()
-
-
     
+    som_video.stop()
+    pygame.mixer.music.stop()
+
+    video.release()
     return state
 
 

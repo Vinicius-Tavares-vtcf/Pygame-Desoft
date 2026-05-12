@@ -5,7 +5,10 @@ import random
 from config import *
 from os import path
 from init_screen import *
+from assets_loader import *
+import ctypes
 
+ctypes.windll.user32.SetProcessDPIAware()
 pygame.init()
 pygame.mixer.init()
 
@@ -13,13 +16,17 @@ pygame.mixer.init()
 window = pygame.display.set_mode((LARGURA, ALTURA))
 pygame.display.set_caption('Coliseu')
 
+# ----- Carrega assets
+assets = load_assets()
+
 
 state = INIT
 while state != QUIT:
     if state == INIT:
-        state = init_screen(window)
-#      elif state == GAME:
-#          #state = game_screen(window)
+        state = init_screen(window, assets)
+    elif state == GAME:
+        state = QUIT
+        #state = game_screen(window, assets)
 #      else:
 #      state = game_over(window)
 #          state = QUIT
