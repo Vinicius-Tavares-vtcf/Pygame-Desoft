@@ -10,6 +10,7 @@ TXT_BATALHAR = 'txt_batalhar'
 HOVER_BATALHAR = 'hover_batalhar'
 TXT_SAIR = 'txt_sair'
 MUSICA_INICIAL = 'musica_inicial'
+
 HOVER_SAIR = 'hover_sair'
 ARENA_COLISEU = 'Arena_Coliseu'
 
@@ -37,6 +38,8 @@ def load_assets():
     background_arena = pygame.image.load(path.join(IMG_DIR, 'Arena Coliseu.jpeg')).convert_alpha()
     assets[ARENA_COLISEU] = pygame.transform.smoothscale(background_arena, (LARGURA*2.5, ALTURA*2.5))
 
+    player_sheet = pygame.image.load(path.join(IMG_DIR, 'Personagem.png')).convert_alpha()
+    assets["player_sheet"] = player_sheet
 
     # ----- Sons
 

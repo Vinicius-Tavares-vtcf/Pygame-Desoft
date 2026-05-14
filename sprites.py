@@ -1,10 +1,28 @@
 import random
 import pygame
-from config import WIDTH, HEIGHT, METEOR_WIDTH, METEOR_HEIGHT, SHIP_WIDTH, SHIP_HEIGHT
-from assets import SHIP_IMG, PEW_SOUND, METEOR_IMG, BULLET_IMG, EXPLOSION_ANIM
+#from config import WIDTH, HEIGHT, METEOR_WIDTH, METEOR_HEIGHT, SHIP_WIDTH, SHIP_HEIGHT
+#from assets import SHIP_IMG, PEW_SOUND, METEOR_IMG, BULLET_IMG, EXPLOSION_ANIM
 
 
 
+def cortar_spritesheet(sheet, frame_w, frame_h, max_colunas=None):
+    animacoes = []
+
+    total_colunas = sheet.get_width() // frame_w
+    total_linhas = sheet.get_height() // frame_h
+
+    if max_colunas is None:
+        max_colunas = total_colunas
+
+    for y in range(total_linhas):
+        linha = []
+        for x in range(max_colunas-4):  # 👈 LIMITA AQUI
+            frame = pygame.Surface((frame_w, frame_h), pygame.SRCALPHA)
+            frame.blit(sheet, (0, 0), (x * frame_w, y * frame_h, frame_w, frame_h))
+            linha.append(frame)
+        animacoes.append(linha)
+
+    return animacoes
 
 
         
