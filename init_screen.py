@@ -11,7 +11,7 @@ def init_screen(screen, assets):
     clock = pygame.time.Clock()
     
     #Fade In Surface
-    fade = pygame.Surface((LARGURA, ALTURA))
+    fade = pygame.Surface((LARGURA_TELA, ALTURA_TELA))
     fade.fill((0, 0, 0))
     alpha = 255 
 
@@ -79,7 +79,7 @@ def init_screen(screen, assets):
 
         frame = cv2.resize(frame, (1280, 720))
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame_surface = pygame.transform.scale(pygame.surfarray.make_surface(frame.swapaxes(0, 1)), (LARGURA, ALTURA))
+        frame_surface = pygame.transform.scale(pygame.surfarray.make_surface(frame.swapaxes(0, 1)), (LARGURA_TELA, ALTURA_TELA))
 
         
         screen.blit(frame_surface, (0, 0))

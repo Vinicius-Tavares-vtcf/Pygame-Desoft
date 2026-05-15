@@ -36,9 +36,9 @@ def load_assets():
     assets[HOVER_SAIR] = pygame.transform.smoothscale(hover_sair,(320*1.03,184*1.03))
 
     background_arena = pygame.image.load(path.join(IMG_DIR, 'Arena Coliseu.jpeg')).convert_alpha()
-    assets[ARENA_COLISEU] = pygame.transform.smoothscale(background_arena, (LARGURA*2.5, ALTURA*2.5))
+    assets[ARENA_COLISEU] = pygame.transform.smoothscale(background_arena, (LARGURA_TELA*2.5, ALTURA_TELA*2.5))
 
-    player_sheet = pygame.image.load(path.join(IMG_DIR, 'Personagem.png')).convert_alpha()
+    player_sheet = pygame.image.load(path.join(IMG_DIR, 'Personagem32bit.png')).convert_alpha()
     assets["player_sheet"] = player_sheet
 
     # ----- Sons

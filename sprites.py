@@ -1,5 +1,6 @@
 import random
 import pygame
+
 #from config import WIDTH, HEIGHT, METEOR_WIDTH, METEOR_HEIGHT, SHIP_WIDTH, SHIP_HEIGHT
 #from assets import SHIP_IMG, PEW_SOUND, METEOR_IMG, BULLET_IMG, EXPLOSION_ANIM
 
@@ -24,9 +25,59 @@ def cortar_spritesheet(sheet, frame_w, frame_h, max_colunas=None):
 
     return animacoes
 
-
+class Player:
+    def __init__(self,map_width,map_height,assets):
+        self.x = map_width// 2
+        self.y = map_height// 2
+        self.mapwidth = map_width
+        self.mapheight = map_height
+        self.speed = 5
+        self.dx = 0
+        self.dy = 0
+        self.sheet = assets["player_sheet"]
         
+        frame_w = self.sheet.get_width() // 8
+        frame_h = self.sheet.get_height() // 8
 
+        frames = cortar_spritesheet(self.sheet, frame_w, frame_h)
+
+        self.animacoes = {
+        "down": frames[6],
+        "left": frames[1],
+        "right": frames[3],
+        "up": frames[2]
+        }
+        self.direction = "down"
+
+        self.frame_timer = 0 
+    
+    def update(self):
+        self.old_x = self.x
+        self.old_y = self.y
+
+
+        self.x += self.dx
+        self.y += self.dy
+        
+        distância_centro = ((self.x - self.mapwidth // 2)**2+(self.y - self.mapheight // 2)**2)**0.5
+
+        if distância_centro > 785 or (self.y - self.mapheight // 2) < -625:
+            self.x =  self.old_x
+            self.y =  self.old_y
+            
+        moving = (self.dx != 0 or self.dy != 0)
+
+        if moving:
+            if abs(self.dx) > abs(self.dy):
+                self.direction = "right" if self.dx > 0 else "left"
+            else:
+                self.direction = "down" if self.dy > 0 else "up"
+
+            self.frame_timer += 0.15
+            if self.frame_timer >= len(self.animacoes[self.direction]):
+                self.frame_timer = 0
+        else:
+            self.frame_timer = 0
 
 
 

@@ -13,7 +13,7 @@ pygame.init()
 pygame.mixer.init()
 
 # ----- Gera tela principal
-window = pygame.display.set_mode((LARGURA, ALTURA))
+window = pygame.display.set_mode((LARGURA_TELA, ALTURA_TELA))
 pygame.display.set_caption('O Coliseu')
 
 # ----- Carrega assets
