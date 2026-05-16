@@ -89,8 +89,8 @@ def game_screen(screen, assets):
         vcamerax = player.x - LARGURA_TELA // 2
         vcameray = player.y - ALTURA_TELA // 2
 
-        vcamerax = max(0, min(vcamerax, map_width - LARGURA_TELA))
-        vcameray = max(0, min(vcameray, map_height - ALTURA_TELA))
+        # vcamerax = max(0, min(vcamerax, map_width - LARGURA_TELA))
+        # vcameray = max(0, min(vcameray, map_height - ALTURA_TELA))
 
         # Equipar arma ao tocar nela.
         player_rect = pygame.Rect(player.x - 18, player.y - 34, 36, 68)
@@ -157,7 +157,7 @@ def game_screen(screen, assets):
         player_frame = player.get_current_frame()
         largura_boneco = player_frame.get_width()
         altura_boneco = player_frame.get_height()
-        player_frame = pygame.transform.smoothscale(player_frame, (int(largura_boneco * 1.25), int(altura_boneco * 1.25)))
+        # player_frame = pygame.transform.smoothscale(player_frame, (int(largura_boneco * 1.25), int(altura_boneco * 1.25)))
         cx = LARGURA_TELA // 2 - player_frame.get_width() // 2
         cy = ALTURA_TELA // 2 - player_frame.get_height() // 2
         screen.blit(player_frame, (cx, cy))

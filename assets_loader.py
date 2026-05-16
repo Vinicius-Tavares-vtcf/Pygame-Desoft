@@ -57,14 +57,14 @@ def load_assets():
     assets[ARENA_COLISEU] = pygame.transform.smoothscale(background_arena, (int(LARGURA_TELA * 2.5), int(ALTURA_TELA * 2.5)))
 
     assets['player_sheet'] = pygame.image.load(path.join(IMG_DIR, 'Personagem32bit.png')).convert_alpha()
-    assets[ENEMY_ESQUELETO] = pygame.image.load(path.join(IMG_DIR, 'Esqueleto.png')).convert_alpha()
-    assets[ENEMY_LOBISOMEM] = pygame.image.load(path.join(IMG_DIR, 'Lobisomem.png')).convert_alpha()
-    assets[ENEMY_MAGO] = pygame.image.load(path.join(IMG_DIR, 'Mago.png')).convert_alpha()
+    assets[ENEMY_ESQUELETO] = pygame.image.load(path.join(IMG_DIR, 'Esqueleto32bit.png')).convert_alpha()
+    assets[ENEMY_LOBISOMEM] = pygame.image.load(path.join(IMG_DIR, 'Lobisomem32bit.png')).convert_alpha()
+    assets[ENEMY_MAGO] = pygame.image.load(path.join(IMG_DIR, 'Mago32bit.png')).convert_alpha()
 
     # As armas no mapa e na mao do personagem precisam ficar maiores para serem visiveis.
-    assets[WEAPON_ESPADA] = _load_scaled_image(IMG_DIR, 'Espada.png', (140, 140))
-    assets[WEAPON_ARCO] = _load_scaled_image(IMG_DIR, 'Arco.png', (140, 140))
-    assets[WEAPON_CAJADO] = _load_scaled_image(IMG_DIR, 'Cajado.png', (140, 140))
+    assets[WEAPON_ESPADA] = _load_scaled_image(IMG_DIR, 'Espada32bit.png', (140, 140))
+    assets[WEAPON_ARCO] = _load_scaled_image(IMG_DIR, 'Arco32bit.png', (140, 140))
+    assets[WEAPON_CAJADO] = _load_scaled_image(IMG_DIR, 'Cajado32bit.png', (140, 140))
 
     # ----- Sons
     music_path = path.join(SND_DIR, 'Musica-Epica.mp3')

@@ -24,7 +24,6 @@ def cortar_spritesheet(sheet, frame_w, frame_h, max_colunas=None):
     return animacoes
 
 
-
 def _scale_frames(frames, scale_factor):
     scaled = []
     for frame in frames:
@@ -50,11 +49,13 @@ class Player:
         frame_h = self.sheet.get_height() // 8
         frames = cortar_spritesheet(self.sheet, frame_w, frame_h)
 
+        scale_factor = 1.10 
+
         self.animacoes = {
-            'down': frames[6],
-            'left': frames[1],
-            'right': frames[3],
-            'up': frames[2],
+            'down': _scale_frames(frames[6][:4], scale_factor),
+            'left': _scale_frames(frames[1][:4], scale_factor),
+            'right': _scale_frames(frames[3][:4], scale_factor),
+            'up': _scale_frames(frames[2][:4], scale_factor),
         }
 
         # A primeira fileira funciona bem como animacao de ataque/soco.
@@ -174,12 +175,12 @@ class Enemy:
         frames = cortar_spritesheet(self.sheet, frame_w, frame_h)
 
         # Inimigos maiores para ficarem visiveis na arena.
-        scale_factor = 1.0
+        scale_factor = 1.1
         self.animacoes = {
-            'down': _scale_frames(frames[6], scale_factor),
-            'left': _scale_frames(frames[1], scale_factor),
-            'right': _scale_frames(frames[3], scale_factor),
-            'up': _scale_frames(frames[2], scale_factor),
+            'down': _scale_frames(frames[6][:4], scale_factor),
+            'left': _scale_frames(frames[1][:4], scale_factor),
+            'right': _scale_frames(frames[3][:4], scale_factor),
+            'up': _scale_frames(frames[2][:4], scale_factor),
         }
         self.direction = 'down'
         self.frame_timer = 0
@@ -230,8 +231,13 @@ class Enemy:
 class WeaponPickup:
     def __init__(self, x, y, image, name):
         self.name = name
-
+        self.sheet = image
+        frame_w = self.sheet.get_width() // 8
+        frame_h = self.sheet.get_height() // 8
+        animacoes = cortar_spritesheet(image, frame_w, frame_h, max_colunas=None)
+        image = animacoes[0][0]
         rect = image.get_bounding_rect()
+
         if rect.width > 0 and rect.height > 0:
             image = image.subsurface(rect).copy()
 
