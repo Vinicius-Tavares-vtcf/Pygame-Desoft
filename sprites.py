@@ -1,8 +1,6 @@
+import math
 import random
 import pygame
-
-#from config import WIDTH, HEIGHT, METEOR_WIDTH, METEOR_HEIGHT, SHIP_WIDTH, SHIP_HEIGHT
-#from assets import SHIP_IMG, PEW_SOUND, METEOR_IMG, BULLET_IMG, EXPLOSION_ANIM
 
 
 
@@ -17,7 +15,7 @@ def cortar_spritesheet(sheet, frame_w, frame_h, max_colunas=None):
 
     for y in range(total_linhas):
         linha = []
-        for x in range(max_colunas-4):  # 👈 LIMITA AQUI
+        for x in range(max_colunas):
             frame = pygame.Surface((frame_w, frame_h), pygame.SRCALPHA)
             frame.blit(sheet, (0, 0), (x * frame_w, y * frame_h, frame_w, frame_h))
             linha.append(frame)
@@ -25,53 +23,129 @@ def cortar_spritesheet(sheet, frame_w, frame_h, max_colunas=None):
 
     return animacoes
 
+
+
+def _scale_frames(frames, scale_factor):
+    scaled = []
+    for frame in frames:
+        w, h = frame.get_size()
+        if scale_factor != 1:
+            frame = pygame.transform.smoothscale(frame, (max(1, int(w * scale_factor)), max(1, int(h * scale_factor))))
+        scaled.append(frame)
+    return scaled
+
+
 class Player:
-    def __init__(self,map_width,map_height,assets):
-        self.x = map_width// 2
-        self.y = map_height// 2
+    def __init__(self, map_width, map_height, assets):
+        self.x = map_width // 2
+        self.y = map_height // 2
         self.mapwidth = map_width
         self.mapheight = map_height
         self.speed = 5
         self.dx = 0
         self.dy = 0
-        self.sheet = assets["player_sheet"]
-        
+        self.sheet = assets['player_sheet']
+
         frame_w = self.sheet.get_width() // 8
         frame_h = self.sheet.get_height() // 8
-
         frames = cortar_spritesheet(self.sheet, frame_w, frame_h)
 
         self.animacoes = {
-        "down": frames[6],
-        "left": frames[1],
-        "right": frames[3],
-        "up": frames[2]
+            'down': frames[6],
+            'left': frames[1],
+            'right': frames[3],
+            'up': frames[2],
         }
-        self.direction = "down"
 
-        self.frame_timer = 0 
-    
+        # A primeira fileira funciona bem como animacao de ataque/soco.
+        self.attack_frames = {
+            'down': frames[0],
+            'left': frames[0],
+            'right': frames[0],
+            'up': frames[0],
+        }
+
+        self.direction = 'down'
+        self.frame_timer = 0
+
+        self.health = 100
+        self.max_health = 100
+        self.coins = 0
+        self.weapon = 'Punhos'
+        self.weapon_damage = 1
+        self.attack_range = 48
+        self.attack_cooldown_ms = 320
+        self.attack_duration_ms = 140
+        self.last_attack_ms = 0
+        self.attack_start_ms = 0
+        self.attacking = False
+        self.attack_direction = self.direction
+        self.attack_box = pygame.Rect(0, 0, 0, 0)
+        self.weapon_image = None
+        self.weapon_images = {
+            'Espada': assets.get('weapon_espada'),
+            'Arco': assets.get('weapon_arco'),
+            'Cajado': assets.get('weapon_cajado'),
+        }
+
+    def equip(self, weapon_name):
+        weapons = {
+            'Espada': {'damage': 3, 'range': 66},
+            'Arco': {'damage': 2, 'range': 140},
+            'Cajado': {'damage': 4, 'range': 90},
+            'Punhos': {'damage': 1, 'range': 48},
+        }
+        weapon = weapons.get(weapon_name, weapons['Punhos'])
+        self.weapon = weapon_name
+        self.weapon_damage = weapon['damage']
+        self.attack_range = weapon['range']
+        self.weapon_image = self.weapon_images.get(weapon_name)
+
+    def can_attack(self):
+        return pygame.time.get_ticks() - self.last_attack_ms >= self.attack_cooldown_ms
+
+    def start_attack(self):
+        now = pygame.time.get_ticks()
+        if not self.can_attack():
+            return False
+        self.last_attack_ms = now
+        self.attack_start_ms = now
+        self.attacking = True
+        self.attack_direction = self.direction
+        self.update_attack_box()
+        return True
+
+    def update_attack_box(self):
+        box_size = self.attack_range
+        if self.attack_direction == 'up':
+            self.attack_box = pygame.Rect(self.x - box_size // 2, self.y - box_size, box_size, box_size)
+        elif self.attack_direction == 'down':
+            self.attack_box = pygame.Rect(self.x - box_size // 2, self.y + 10, box_size, box_size)
+        elif self.attack_direction == 'left':
+            self.attack_box = pygame.Rect(self.x - box_size, self.y - box_size // 2, box_size, box_size)
+        else:
+            self.attack_box = pygame.Rect(self.x + 10, self.y - box_size // 2, box_size, box_size)
+
     def update(self):
         self.old_x = self.x
         self.old_y = self.y
 
-
         self.x += self.dx
         self.y += self.dy
-        
-        distância_centro = ((self.x - self.mapwidth // 2)**2+(self.y - self.mapheight // 2)**2)**0.5
 
-        if distância_centro > 785 or (self.y - self.mapheight // 2) < -625:
-            self.x =  self.old_x
-            self.y =  self.old_y
-            
+        distancia_centro = math.dist((self.x, self.y), (self.mapwidth // 2, self.mapheight // 2))
+
+        if distancia_centro > 785 or (self.y - self.mapheight // 2) < -625:
+            self.x = self.old_x
+            self.y = self.old_y
+
         moving = (self.dx != 0 or self.dy != 0)
 
         if moving:
             if abs(self.dx) > abs(self.dy):
-                self.direction = "right" if self.dx > 0 else "left"
+                self.direction = 'right' if self.dx > 0 else 'left'
             else:
-                self.direction = "down" if self.dy > 0 else "up"
+                self.direction = 'down' if self.dy > 0 else 'up'
 
             self.frame_timer += 0.15
             if self.frame_timer >= len(self.animacoes[self.direction]):
@@ -79,151 +153,109 @@ class Player:
         else:
             self.frame_timer = 0
 
+        if self.attacking:
+            self.update_attack_box()
+            if pygame.time.get_ticks() - self.attack_start_ms > self.attack_duration_ms:
+                self.attacking = False
+                self.attack_box = pygame.Rect(0, 0, 0, 0)
+
+    def get_current_frame(self):
+        frames = self.attack_frames[self.attack_direction] if self.attacking else self.animacoes[self.direction]
+        frame_index = int(self.frame_timer) % len(frames)
+        return frames[frame_index]
 
 
+class Enemy:
+    def __init__(self, x, y, assets, kind='esqueleto'):
+        self.kind = kind
+        self.sheet = assets[kind]
+        frame_w = self.sheet.get_width() // 8
+        frame_h = self.sheet.get_height() // 8
+        frames = cortar_spritesheet(self.sheet, frame_w, frame_h)
 
+        # Inimigos maiores para ficarem visiveis na arena.
+        scale_factor = 1.0
+        self.animacoes = {
+            'down': _scale_frames(frames[6], scale_factor),
+            'left': _scale_frames(frames[1], scale_factor),
+            'right': _scale_frames(frames[3], scale_factor),
+            'up': _scale_frames(frames[2], scale_factor),
+        }
+        self.direction = 'down'
+        self.frame_timer = 0
+        self.frame_speed = 0.12
+        self.x = float(x)
+        self.y = float(y)
+        self.speed = random.randint(2, 4)
+        self.max_health = random.randint(2, 4)
+        self.health = self.max_health
+        self.damage = 10
+        self.coins_reward = random.randint(1, 3)
+        self.hit_flash = 0
 
+    def rect(self):
+        frame = self.get_current_frame()
+        return frame.get_rect(center=(int(self.x), int(self.y)))
 
+    def get_current_frame(self):
+        frames = self.animacoes[self.direction]
+        return frames[int(self.frame_timer) % len(frames)]
 
-# tudo isso é cópia do sprites do handout, só pra ajudar na hora de fazer o nosso
-# class Ship(pygame.sprite.Sprite):
-#     def __init__(self, groups, assets):
-#         # Construtor da classe mãe (Sprite).
-#         pygame.sprite.Sprite.__init__(self)
+    def update(self, player):
+        now = pygame.time.get_ticks()
+        dx = player.x - self.x
+        dy = player.y - self.y
+        dist = math.hypot(dx, dy)
 
-#         self.image = assets[SHIP_IMG]
-#         self.mask = pygame.mask.from_surface(self.image)
-#         self.rect = self.image.get_rect()
-#         self.rect.centerx = WIDTH / 2
-#         self.rect.bottom = HEIGHT - 10
-#         self.speedx = 0
-#         self.groups = groups
-#         self.assets = assets
+        if dist > 0:
+            step = self.speed
+            self.x += step * dx / dist
+            self.y += step * dy / dist
 
-#         # Só será possível atirar uma vez a cada 500 milissegundos
-#         self.last_shot = pygame.time.get_ticks()
-#         self.shoot_ticks = 500
+            if abs(dx) > abs(dy):
+                self.direction = 'right' if dx > 0 else 'left'
+            else:
+                self.direction = 'down' if dy > 0 else 'up'
 
-#     def update(self):
-#         # Atualização da posição da nave
-#         self.rect.x += self.speedx
+            self.frame_timer += self.frame_speed
 
-#         # Mantem dentro da tela
-#         if self.rect.right > WIDTH:
-#             self.rect.right = WIDTH
-#         if self.rect.left < 0:
-#             self.rect.left = 0
+        if self.hit_flash > 0 and now >= self.hit_flash:
+            self.hit_flash = 0
 
-#     def shoot(self):
-#         # Verifica se pode atirar
-#         now = pygame.time.get_ticks()
-#         # Verifica quantos ticks se passaram desde o último tiro.
-#         elapsed_ticks = now - self.last_shot
+    def take_damage(self, damage):
+        self.health -= damage
+        self.hit_flash = pygame.time.get_ticks() + 120
+        return self.health <= 0
 
-#         # Se já pode atirar novamente...
-#         if elapsed_ticks > self.shoot_ticks:
-#             # Marca o tick da nova imagem.
-#             self.last_shot = now
-#             # A nova bala vai ser criada logo acima e no centro horizontal da nave
-#             new_bullet = Bullet(self.assets, self.rect.top, self.rect.centerx)
-#             self.groups['all_sprites'].add(new_bullet)
-#             self.groups['all_bullets'].add(new_bullet)
-#             self.assets[PEW_SOUND].play()
+class WeaponPickup:
+    def __init__(self, x, y, image, name):
+        self.name = name
 
-# class Meteor(pygame.sprite.Sprite):
-#     def __init__(self, assets):
-#         # Construtor da classe mãe (Sprite).
-#         pygame.sprite.Sprite.__init__(self)
+        rect = image.get_bounding_rect()
+        if rect.width > 0 and rect.height > 0:
+            image = image.subsurface(rect).copy()
 
-#         self.image = assets[METEOR_IMG]
-#         self.mask = pygame.mask.from_surface(self.image)
-#         self.rect = self.image.get_rect()
-#         self.rect.x = random.randint(0, WIDTH-METEOR_WIDTH)
-#         self.rect.y = random.randint(-100, -METEOR_HEIGHT)
-#         self.speedx = random.randint(-3, 3)
-#         self.speedy = random.randint(2, 9)
+        self.image = pygame.transform.smoothscale(image, (80, 80))
+        self.rect = self.image.get_rect(center=(x, y))
 
-#     def update(self):
-#         # Atualizando a posição do meteoro
-#         self.rect.x += self.speedx
-#         self.rect.y += self.speedy
-#         # Se o meteoro passar do final da tela, volta para cima e sorteia
-#         # novas posições e velocidades
-#         if self.rect.top > HEIGHT or self.rect.right < 0 or self.rect.left > WIDTH:
-#             self.rect.x = random.randint(0, WIDTH-METEOR_WIDTH)
-#             self.rect.y = random.randint(-100, -METEOR_HEIGHT)
-#             self.speedx = random.randint(-3, 3)
-#             self.speedy = random.randint(2, 9)
+    def draw(self, screen, cam_x, cam_y):
+        sx = self.rect.x - cam_x
+        sy = self.rect.y - cam_y
+        pygame.draw.rect(
+            screen,
+            (255, 215, 0),
+            (sx - 4, sy - 4, self.rect.w + 8, self.rect.h + 8),
+            2
+        )
+        screen.blit(self.image, (sx, sy))
+# class WeaponPickup:antes tava assim
+#     def __init__(self, x, y, image, name):
+#         self.name = name
+#         self.image = pygame.transform.smoothscale(image, (140, 140))
+#         self.rect = self.image.get_rect(center=(x, y))
 
-# # Classe Bullet que representa os tiros
-# class Bullet(pygame.sprite.Sprite):
-#     # Construtor da classe.
-#     def __init__(self, assets, bottom, centerx):
-#         # Construtor da classe mãe (Sprite).
-#         pygame.sprite.Sprite.__init__(self)
-
-#         self.image = assets[BULLET_IMG]
-#         self.mask = pygame.mask.from_surface(self.image)
-#         self.rect = self.image.get_rect()
-
-#         # Coloca no lugar inicial definido em x, y do constutor
-#         self.rect.centerx = centerx
-#         self.rect.bottom = bottom
-#         self.speedy = -10  # Velocidade fixa para cima
-
-#     def update(self):
-#         # A bala só se move no eixo y
-#         self.rect.y += self.speedy
-
-#         # Se o tiro passar do inicio da tela, morre.
-#         if self.rect.bottom < 0:
-#             self.kill()
-
-# # Classe que representa uma explosão de meteoro
-# class Explosion(pygame.sprite.Sprite):
-#     # Construtor da classe.
-#     def __init__(self, center, assets):
-#         # Construtor da classe mãe (Sprite).
-#         pygame.sprite.Sprite.__init__(self)
-
-#         # Armazena a animação de explosão
-#         self.explosion_anim = assets[EXPLOSION_ANIM]
-
-#         # Inicia o processo de animação colocando a primeira imagem na tela.
-#         self.frame = 0  # Armazena o índice atual na animação
-#         self.image = self.explosion_anim[self.frame]  # Pega a primeira imagem
-#         self.rect = self.image.get_rect()
-#         self.rect.center = center  # Posiciona o centro da imagem
-
-#         # Guarda o tick da primeira imagem, ou seja, o momento em que a imagem foi mostrada
-#         self.last_update = pygame.time.get_ticks()
-
-#         # Controle de ticks de animação: troca de imagem a cada self.frame_ticks milissegundos.
-#         # Quando pygame.time.get_ticks() - self.last_update > self.frame_ticks a
-#         # próxima imagem da animação será mostrada
-#         self.frame_ticks = 50
-
-#     def update(self):
-#         # Verifica o tick atual.
-#         now = pygame.time.get_ticks()
-#         # Verifica quantos ticks se passaram desde a ultima mudança de frame.
-#         elapsed_ticks = now - self.last_update
-
-#         # Se já está na hora de mudar de imagem...
-#         if elapsed_ticks > self.frame_ticks:
-#             # Marca o tick da nova imagem.
-#             self.last_update = now
-
-#             # Avança um quadro.
-#             self.frame += 1
-
-#             # Verifica se já chegou no final da animação.
-#             if self.frame == len(self.explosion_anim):
-#                 # Se sim, tchau explosão!
-#                 self.kill()
-#             else:
-#                 # Se ainda não chegou ao fim da explosão, troca de imagem.
-#                 center = self.rect.center
-#                 self.image = self.explosion_anim[self.frame]
-#                 self.rect = self.image.get_rect()
-#                 self.rect.center = center
+#     def draw(self, screen, cam_x, cam_y):
+#         sx = self.rect.x - cam_x
+#         sy = self.rect.y - cam_y
+#         pygame.draw.rect(screen, (255, 215, 0), (sx - 8, sy - 8, self.rect.w + 16, self.rect.h + 16), 3)
+#         screen.blit(self.image, (sx, sy))
