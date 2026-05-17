@@ -2,6 +2,23 @@ import math
 import random
 import pygame
 
+def melhor_frame_visivel(sheet, grid=8):
+    frame_w = sheet.get_width() // grid
+    frame_h = sheet.get_height() // grid
+    frames = cortar_spritesheet(sheet, frame_w, frame_h)
+
+    melhor = None
+    melhor_area = -1
+
+    for linha in frames:
+        for frame in linha:
+            rect = frame.get_bounding_rect()
+            area = rect.width * rect.height
+            if area > melhor_area:
+                melhor_area = area
+                melhor = frame.subsurface(rect).copy() if area > 0 else frame
+
+    return melhor if melhor is not None else pygame.Surface((frame_w, frame_h), pygame.SRCALPHA)
 
 
 def cortar_spritesheet(sheet, frame_w, frame_h, max_colunas=None):
@@ -22,6 +39,24 @@ def cortar_spritesheet(sheet, frame_w, frame_h, max_colunas=None):
         animacoes.append(linha)
 
     return animacoes
+
+def pegar_frame(sheet, linha, coluna, grid=32):
+    frame_w = sheet.get_width() // grid
+    frame_h = sheet.get_height() // grid
+
+    frame = pygame.Surface((frame_w, frame_h), pygame.SRCALPHA)
+    frame.blit(
+        sheet,
+        (0, 0),
+        (coluna * frame_w, linha * frame_h, frame_w, frame_h)
+    )
+
+    rect = frame.get_bounding_rect()
+
+    if rect.width > 0 and rect.height > 0:
+        frame = frame.subsurface(rect).copy()
+
+    return frame
 
 
 def _scale_frames(frames, scale_factor):
@@ -83,13 +118,9 @@ class Player:
         self.attack_direction = self.direction
         self.attack_box = pygame.Rect(0, 0, 0, 0)
         self.weapon_image = None
-        self.weapon_images = {
-            'Espada': assets.get('weapon_espada'),
-            'Arco': assets.get('weapon_arco'),
-            'Cajado': assets.get('weapon_cajado'),
-        }
 
-    def equip(self, weapon_name): #Troca a arma do jogador e ajusta dano, alcance e imagem da arma.
+
+    '''def equip(self, weapon_name): #Troca a arma do jogador e ajusta dano, alcance e imagem da arma.
         weapons = {
             'Espada': {'damage': 3, 'range': 66},
             'Arco': {'damage': 2, 'range': 140},
@@ -100,7 +131,25 @@ class Player:
         self.weapon = weapon_name
         self.weapon_damage = weapon['damage']
         self.attack_range = weapon['range']
-        self.weapon_image = self.weapon_images.get(weapon_name)
+        self.weapon_image = self.weapon_images.get(weapon_name)'''
+    def equip(self, weapon_name, weapon_sheet=None):
+        weapons = {
+            'Espada': {'damage': 3, 'range': 66},
+            'Arco': {'damage': 2, 'range': 140},
+            'Cajado': {'damage': 4, 'range': 90},
+            'Punhos': {'damage': 1, 'range': 48},
+        }
+
+        weapon = weapons.get(weapon_name, weapons['Punhos'])
+        self.weapon = weapon_name
+        self.weapon_damage = weapon['damage']
+        self.attack_range = weapon['range']
+
+        if weapon_sheet is not None:
+            # pega uma parte visível da arma para desenhar na mão
+            self.weapon_image = melhor_frame_visivel(weapon_sheet, grid=8)
+        else:
+            self.weapon_image = None
 
     def can_attack(self): # Verifica se já passou tempo suficiente para atacar de novo.
         return pygame.time.get_ticks() - self.last_attack_ms >= self.attack_cooldown_ms
@@ -228,7 +277,7 @@ class Enemy:
         self.hit_flash = pygame.time.get_ticks() + 120
         return self.health <= 0
 
-class WeaponPickup: # Essa classe representa uma arma que fica no chão para o jogador pegar.
+'''class WeaponPickup: # Essa classe representa uma arma que fica no chão para o jogador pegar.
     def __init__(self, x, y, image, name):
         self.name = name
         self.sheet = image
@@ -255,6 +304,23 @@ class WeaponPickup: # Essa classe representa uma arma que fica no chão para o j
             (sx - 4, sy - 4, self.rect.w + 8, self.rect.h + 8),
             2
         )
+        screen.blit(self.image, (sx, sy))'''
+
+class WeaponPickup:
+    def __init__(self, x, y, image, name):
+        self.name = name
+        self.sheet = image
+
+        frame = melhor_frame_visivel(self.sheet, grid=8)
+
+        self.image = pygame.transform.smoothscale(frame, (60, 60))
+        self.rect = self.image.get_rect(center=(x, y))
+
+        self.equip_sheet = self.sheet
+
+    def draw(self, screen, cam_x, cam_y):
+        sx = self.rect.x - cam_x
+        sy = self.rect.y - cam_y
         screen.blit(self.image, (sx, sy))
 # class WeaponPickup:antes tava assim
 #     def __init__(self, x, y, image, name):

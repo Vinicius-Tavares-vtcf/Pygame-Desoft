@@ -97,7 +97,7 @@ def game_screen(screen, assets):
         remaining_pickups = []
         for pickup in weapon_pickups:
             if player_rect.colliderect(pickup.rect):
-                player.equip(pickup.name)
+                player.equip(pickup.name, pickup.equip_sheet)
                 message = f'Equipou {pickup.name}!'
                 message_timer = pygame.time.get_ticks() + 1200
             else:
@@ -163,7 +163,7 @@ def game_screen(screen, assets):
         screen.blit(player_frame, (cx, cy))
 
         # Desenha a arma equipada na mao do personagem.
-        if player.weapon_image:
+        '''if player.weapon_image:
             weapon_img = pygame.transform.smoothscale(player.weapon_image, (92, 92))
             if player.direction == 'right':
                 screen.blit(weapon_img, (cx + 26, cy + 18))
@@ -175,7 +175,34 @@ def game_screen(screen, assets):
                 screen.blit(weapon_img, (cx + 10, cy - 30))
             else:
                 weapon_img = pygame.transform.rotate(weapon_img, -90)
-                screen.blit(weapon_img, (cx + 10, cy + 32))
+                screen.blit(weapon_img, (cx + 10, cy + 32))'''
+        if player.weapon_image:
+            weapon_img = pygame.transform.smoothscale(
+                player.weapon_image,
+                (int(player.weapon_image.get_width() * 0.55), int(player.weapon_image.get_height() * 0.55))
+            )
+
+            player_center_x = cx + player_frame.get_width() // 2
+            player_center_y = cy + player_frame.get_height() // 2
+
+            weapon_rect = weapon_img.get_rect()
+
+            if player.direction == 'right':
+                weapon_rect.midleft = (player_center_x + 10, player_center_y + 6)
+
+            elif player.direction == 'left':
+                weapon_img = pygame.transform.flip(weapon_img, True, False)
+                weapon_rect.midright = (player_center_x - 10, player_center_y + 6)
+
+            elif player.direction == 'up':
+                weapon_img = pygame.transform.rotate(weapon_img, 90)
+                weapon_rect.midbottom = (player_center_x + 2, player_center_y - 10)
+
+            else:  # down
+                weapon_img = pygame.transform.rotate(weapon_img, -90)
+                weapon_rect.midtop = (player_center_x + 2, player_center_y + 10)
+
+            screen.blit(weapon_img, weapon_rect.topleft)
 
         # HUD
         hud = pygame.Surface((460, 155), pygame.SRCALPHA)
