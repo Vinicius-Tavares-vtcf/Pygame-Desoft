@@ -232,16 +232,18 @@ class WeaponPickup:
     def __init__(self, x, y, image, name):
         self.name = name
         self.sheet = image
+        print(self.sheet.get_size())
         frame_w = self.sheet.get_width() // 8
         frame_h = self.sheet.get_height() // 8
         animacoes = cortar_spritesheet(image, frame_w, frame_h, max_colunas=None)
-        image = animacoes[0][0]
-        rect = image.get_bounding_rect()
+        self.image = animacoes[0][0]
+        rect = self.image.get_bounding_rect()
+        print(rect)
 
         if rect.width > 0 and rect.height > 0:
-            image = image.subsurface(rect).copy()
+            self.image = self.image.subsurface(rect).copy()
 
-        self.image = pygame.transform.smoothscale(image, (80, 80))
+        # self.image = pygame.transform.smoothscale(image, (80, 80))
         self.rect = self.image.get_rect(center=(x, y))
 
     def draw(self, screen, cam_x, cam_y):

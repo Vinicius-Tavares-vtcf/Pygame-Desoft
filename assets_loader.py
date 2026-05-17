@@ -62,9 +62,9 @@ def load_assets():
     assets[ENEMY_MAGO] = pygame.image.load(path.join(IMG_DIR, 'Mago32bit.png')).convert_alpha()
 
     # As armas no mapa e na mao do personagem precisam ficar maiores para serem visiveis.
-    assets[WEAPON_ESPADA] = _load_scaled_image(IMG_DIR, 'Espada32bit.png', (140, 140))
-    assets[WEAPON_ARCO] = _load_scaled_image(IMG_DIR, 'Arco32bit.png', (140, 140))
-    assets[WEAPON_CAJADO] = _load_scaled_image(IMG_DIR, 'Cajado32bit.png', (140, 140))
+    assets[WEAPON_ESPADA] = pygame.image.load(path.join(IMG_DIR, 'Espada32bit.png'))
+    assets[WEAPON_ARCO] = pygame.image.load(path.join(IMG_DIR, 'Arco32bit.png'))
+    assets[WEAPON_CAJADO] = pygame.image.load(path.join(IMG_DIR, 'Cajado32bit.png'))
 
     # ----- Sons
     music_path = path.join(SND_DIR, 'Musica-Epica.mp3')
