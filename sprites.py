@@ -89,7 +89,7 @@ class Player:
             'Cajado': assets.get('weapon_cajado'),
         }
 
-    def equip(self, weapon_name):
+    def equip(self, weapon_name): #Troca a arma do jogador e ajusta dano, alcance e imagem da arma.
         weapons = {
             'Espada': {'damage': 3, 'range': 66},
             'Arco': {'damage': 2, 'range': 140},
@@ -102,10 +102,10 @@ class Player:
         self.attack_range = weapon['range']
         self.weapon_image = self.weapon_images.get(weapon_name)
 
-    def can_attack(self):
+    def can_attack(self): # Verifica se já passou tempo suficiente para atacar de novo.
         return pygame.time.get_ticks() - self.last_attack_ms >= self.attack_cooldown_ms
 
-    def start_attack(self):
+    def start_attack(self): #Inicia o ataque e marca a direção do golpe.
         now = pygame.time.get_ticks()
         if not self.can_attack():
             return False
@@ -116,7 +116,7 @@ class Player:
         self.update_attack_box()
         return True
 
-    def update_attack_box(self):
+    def update_attack_box(self): #Cria a área de ataque na frente do personagem, dependendo da direção.
         box_size = self.attack_range
         if self.attack_direction == 'up':
             self.attack_box = pygame.Rect(self.x - box_size // 2, self.y - box_size, box_size, box_size)
@@ -127,7 +127,7 @@ class Player:
         else:
             self.attack_box = pygame.Rect(self.x + 10, self.y - box_size // 2, box_size, box_size)
 
-    def update(self):
+    def update(self): #Atualiza o movimento, a direção, a animação e o ataque.
         self.old_x = self.x
         self.old_y = self.y
 
@@ -160,7 +160,7 @@ class Player:
                 self.attacking = False
                 self.attack_box = pygame.Rect(0, 0, 0, 0)
 
-    def get_current_frame(self):
+    def get_current_frame(self): #Retorna o frame certo da animação no momento atual.
         frames = self.attack_frames[self.attack_direction] if self.attacking else self.animacoes[self.direction]
         frame_index = int(self.frame_timer) % len(frames)
         return frames[frame_index]
@@ -194,15 +194,15 @@ class Enemy:
         self.coins_reward = random.randint(1, 3)
         self.hit_flash = 0
 
-    def rect(self):
+    def rect(self): # Retorna um retângulo do inimigo, útil para colisão e desenho.
         frame = self.get_current_frame()
         return frame.get_rect(center=(int(self.x), int(self.y)))
 
-    def get_current_frame(self):
+    def get_current_frame(self): # Pega o frame atual da animação.
         frames = self.animacoes[self.direction]
         return frames[int(self.frame_timer) % len(frames)]
 
-    def update(self, player):
+    def update(self, player): # Faz o inimigo andar na direção do jogador e atualizar animação/direção.
         now = pygame.time.get_ticks()
         dx = player.x - self.x
         dy = player.y - self.y
@@ -223,12 +223,12 @@ class Enemy:
         if self.hit_flash > 0 and now >= self.hit_flash:
             self.hit_flash = 0
 
-    def take_damage(self, damage):
+    def take_damage(self, damage): # Remove vida do inimigo e ativa o efeito visual de dano.
         self.health -= damage
         self.hit_flash = pygame.time.get_ticks() + 120
         return self.health <= 0
 
-class WeaponPickup:
+class WeaponPickup: # Essa classe representa uma arma que fica no chão para o jogador pegar.
     def __init__(self, x, y, image, name):
         self.name = name
         self.sheet = image
@@ -246,7 +246,7 @@ class WeaponPickup:
         # self.image = pygame.transform.smoothscale(image, (80, 80))
         self.rect = self.image.get_rect(center=(x, y))
 
-    def draw(self, screen, cam_x, cam_y):
+    def draw(self, screen, cam_x, cam_y): # Desenha a arma na tela considerando a câmera.
         sx = self.rect.x - cam_x
         sy = self.rect.y - cam_y
         pygame.draw.rect(
