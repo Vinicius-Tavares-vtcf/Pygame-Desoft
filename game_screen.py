@@ -13,16 +13,17 @@ def _draw_text(screen, font, text, x, y, color=(255, 255, 255)):
 
 
 def _spawn_enemy(map_width, map_height, assets, player_x, player_y):
-    enemy_types = [ENEMY_ESQUELETO, ENEMY_LOBISOMEM, ENEMY_MAGO]
-    kind = random.choice(enemy_types)
+    enemy_classes = [Esqueleto, Lobisomem, Mago]
+    cls = random.choice(enemy_classes)
+
     angle = random.uniform(0, 6.28318)
     distance = random.randint(240, 520)
     x = player_x + int(distance * pygame.math.Vector2(1, 0).rotate_rad(angle).x)
     y = player_y + int(distance * pygame.math.Vector2(1, 0).rotate_rad(angle).y)
     x = max(100, min(x, map_width - 100))
     y = max(100, min(y, map_height - 100))
-    return Enemy(x, y, assets, kind=kind)
 
+    return cls(x, y, assets)
 
 
 def game_screen(screen, assets):

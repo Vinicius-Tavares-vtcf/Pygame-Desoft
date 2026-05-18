@@ -1,7 +1,7 @@
 import math
 import random
 import pygame
-
+from assets_loader import *
 def melhor_frame_visivel(sheet, grid=8):
     frame_w = sheet.get_width() // grid
     frame_h = sheet.get_height() // grid
@@ -215,43 +215,50 @@ class Player:
         return frames[frame_index]
 
 
-class Enemy:
-    def __init__(self, x, y, assets, kind='esqueleto'):
-        self.kind = kind
-        self.sheet = assets[kind]
+class EnemyBase:
+    KIND = ENEMY_ESQUELETO
+    SPEED_RANGE = (2, 4)
+    HP_RANGE = (2, 4)
+    DAMAGE = 10
+    COINS_RANGE = (1, 3)
+    SCALE = 1.1
+    FRAME_SPEED = 0.12
+
+    def __init__(self, x, y, assets):
+        self.kind = self.KIND
+        self.sheet = assets[self.KIND]
+
         frame_w = self.sheet.get_width() // 8
         frame_h = self.sheet.get_height() // 8
         frames = cortar_spritesheet(self.sheet, frame_w, frame_h)
 
-        # Inimigos maiores para ficarem visiveis na arena.
-        scale_factor = 1.1
         self.animacoes = {
-            'down': _scale_frames(frames[6][:4], scale_factor),
-            'left': _scale_frames(frames[1][:4], scale_factor),
-            'right': _scale_frames(frames[3][:4], scale_factor),
-            'up': _scale_frames(frames[2][:4], scale_factor),
+            'down': _scale_frames(frames[6][:4], self.SCALE),
+            'left': _scale_frames(frames[1][:4], self.SCALE),
+            'right': _scale_frames(frames[3][:4], self.SCALE),
+            'up': _scale_frames(frames[2][:4], self.SCALE),
         }
+
         self.direction = 'down'
         self.frame_timer = 0
-        self.frame_speed = 0.12
         self.x = float(x)
         self.y = float(y)
-        self.speed = random.randint(2, 4)
-        self.max_health = random.randint(2, 4)
+        self.speed = random.randint(*self.SPEED_RANGE)
+        self.max_health = random.randint(*self.HP_RANGE)
         self.health = self.max_health
-        self.damage = 10
-        self.coins_reward = random.randint(1, 3)
+        self.damage = self.DAMAGE
+        self.coins_reward = random.randint(*self.COINS_RANGE)
         self.hit_flash = 0
 
-    def rect(self): # Retorna um retângulo do inimigo, útil para colisão e desenho.
+    def rect(self):
         frame = self.get_current_frame()
         return frame.get_rect(center=(int(self.x), int(self.y)))
 
-    def get_current_frame(self): # Pega o frame atual da animação.
+    def get_current_frame(self):
         frames = self.animacoes[self.direction]
         return frames[int(self.frame_timer) % len(frames)]
 
-    def update(self, player): # Faz o inimigo andar na direção do jogador e atualizar animação/direção.
+    def update(self, player):
         now = pygame.time.get_ticks()
         dx = player.x - self.x
         dy = player.y - self.y
@@ -267,44 +274,27 @@ class Enemy:
             else:
                 self.direction = 'down' if dy > 0 else 'up'
 
-            self.frame_timer += self.frame_speed
+            self.frame_timer += self.FRAME_SPEED
 
         if self.hit_flash > 0 and now >= self.hit_flash:
             self.hit_flash = 0
 
-    def take_damage(self, damage): # Remove vida do inimigo e ativa o efeito visual de dano.
+    def take_damage(self, damage):
         self.health -= damage
         self.hit_flash = pygame.time.get_ticks() + 120
         return self.health <= 0
 
-'''class WeaponPickup: # Essa classe representa uma arma que fica no chão para o jogador pegar.
-    def __init__(self, x, y, image, name):
-        self.name = name
-        self.sheet = image
-        print(self.sheet.get_size())
-        frame_w = self.sheet.get_width() // 8
-        frame_h = self.sheet.get_height() // 8
-        animacoes = cortar_spritesheet(image, frame_w, frame_h, max_colunas=None)
-        self.image = animacoes[0][0]
-        rect = self.image.get_bounding_rect()
-        print(rect)
 
-        if rect.width > 0 and rect.height > 0:
-            self.image = self.image.subsurface(rect).copy()
+class Esqueleto(EnemyBase):
+    KIND = ENEMY_ESQUELETO
 
-        # self.image = pygame.transform.smoothscale(image, (80, 80))
-        self.rect = self.image.get_rect(center=(x, y))
 
-    def draw(self, screen, cam_x, cam_y): # Desenha a arma na tela considerando a câmera.
-        sx = self.rect.x - cam_x
-        sy = self.rect.y - cam_y
-        pygame.draw.rect(
-            screen,
-            (255, 215, 0),
-            (sx - 4, sy - 4, self.rect.w + 8, self.rect.h + 8),
-            2
-        )
-        screen.blit(self.image, (sx, sy))'''
+class Lobisomem(EnemyBase):
+    KIND = ENEMY_LOBISOMEM
+
+
+class Mago(EnemyBase):
+    KIND = ENEMY_MAGO
 
 class WeaponPickup:
     def __init__(self, x, y, image, name):
@@ -322,14 +312,3 @@ class WeaponPickup:
         sx = self.rect.x - cam_x
         sy = self.rect.y - cam_y
         screen.blit(self.image, (sx, sy))
-# class WeaponPickup:antes tava assim
-#     def __init__(self, x, y, image, name):
-#         self.name = name
-#         self.image = pygame.transform.smoothscale(image, (140, 140))
-#         self.rect = self.image.get_rect(center=(x, y))
-
-#     def draw(self, screen, cam_x, cam_y):
-#         sx = self.rect.x - cam_x
-#         sy = self.rect.y - cam_y
-#         pygame.draw.rect(screen, (255, 215, 0), (sx - 8, sy - 8, self.rect.w + 16, self.rect.h + 16), 3)
-#         screen.blit(self.image, (sx, sy))
