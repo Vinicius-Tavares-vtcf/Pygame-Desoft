@@ -56,22 +56,50 @@ def _spawn_enemy(map_width, map_height, assets, player_x, player_y):
 def posiciona_arma(player, player_center_x, player_center_y, weapon_img):
     # Cada entrada: (offset_x, offset_y, rotacao)
     config = {
-        'atacando': {
-            'Espada': {'right': (47, -35,   0), 'left': (-30, -22, 120), 'up': (  0, -50,  45), 'down': ( -2,  45, -90)},
-            'Arco':   {'right': (26, -32, 130), 'left': (-20, -27, -70), 'up': (  2, -25, 240), 'down': (  7,  15,  10)},
-            'Cajado': {'right': (60, -20,  60), 'left': (-40, -10, 210), 'up': (  0, -57, 140), 'down': ( -5,  45, -30)},
-            'Punhos': {'right': (34,   8,   0), 'left': ( 40,   8, 180), 'up': (  5, -36,  90), 'down': (-25,  12, -90)},
+        'Espada': {
+            'parado': {
+                'right':      ( 15,   3,   -30), 'left':      ( 2, -32,  90), 'up':      ( 40, -15,  45), 'down':      (-20,  12, -90),
+                'up_right':   ( 38,   5,   0), 'up_left':   ( 18 , -18,  90), 'down_right': ( -18, 17 , -90), 'down_left': (-24,  -4,  180),
+            },
+            'atacando': {
+                'right':      ( 30, 6,   -30), 'left':      (-30, -10, 120), 'up':      (  0, -50,  45), 'down':      ( -2,  45, -90),
+                'up_right':   ( 47, -35,   0), 'up_left':   (-25, -10, 90), 'down_right': ( 38,  34, -85), 'down_left': (-42,  25,  180),
+            },
         },
-        'parado': {
-            'Espada': {'right': (38,   5,   0), 'left': ( 18, -18,  90), 'up': ( 40, -15,  45), 'down': (-20,  12, -90)},
-            'Arco':   {'right': ( 7,  19, 110), 'left': (-15,  -7, -70), 'up': (  2, -25, 270), 'down': (  0,   5, -20)},
-            'Cajado': {'right': (25,   6,  90), 'left': ( 36,   2, 180), 'up': ( 40,  12, 135), 'down': (-20,  12,   0)},
-            'Punhos': {'right': (34,   8,   0), 'left': ( 40,   8, 180), 'up': (  5, -36,  90), 'down': (-25,  12, -90)},
+        'Arco': {
+            'parado': {
+                'right':      (  18,  -8, 110), 'left':      (-26,  -3, -70), 'up':      (  2, -25, 270), 'down':      (  0,   5, -20),
+                'up_right':   (  17,  -15, 110), 'up_left':   (-12,  -7, -70), 'down_right': (  14,  7,  45), 'down_left': ( -10,  3, -45),
+            },
+            'atacando': {
+                'right':      ( 27, -28, 130), 'left':      (-26, -27, -70), 'up':      (  2, -25, 240), 'down':      (  7,  15,  10),
+                'up_right':   ( 26, -32, 130), 'up_left':   (-20, -27, -70), 'down_right': ( 15,  -6,  90), 'down_left': ( -16,  0, -30),
+            },
+        },
+        'Cajado': {
+            'parado': {
+                'right':      ( 25,   2,  65), 'left':      ( 5,  -1, 225), 'up':      ( 40,  12, 135), 'down':      (-20,  12,   0),
+                'up_right':   ( 25,   6,  90), 'up_left':   ( 36,   2, 180), 'down_right': (  3,   9,  45), 'down_left': (  -25,   2,  -90),
+            },
+            'atacando': {
+                'right':      ( 60, 0,  50), 'left':      (-40, -10, 230), 'up':      (  0, -57, 140), 'down':      ( -5,  45, -30),
+                'up_right':   ( 52, -20,  90), 'up_left':   (-15, -14, 180), 'down_right': ( 28,  13,  15), 'down_left': (-28,  21,  -90),
+            },
+        },
+        'Punhos': {
+            'parado': {
+                'right':      ( 34,   8,   0), 'left':      ( 40,   8, 180), 'up':      (  5, -36,  90), 'down':      (-25,  12, -90),
+                'up_right':   ( 34,   8,   0), 'up_left':   ( 40,   8, 180), 'down_right': (  5,  10, -45), 'down_left': (  8,  10,  45),
+            },
+            'atacando': {
+                'right':      ( 34,   8,   0), 'left':      ( 40,   8, 180), 'up':      (  5, -36,  90), 'down':      (-25,  12, -90),
+                'up_right':   ( 20, -14,  45), 'up_left':   ( 40,   8, 180), 'down_right': (  5,  10, -45), 'down_left': (  8,  10,  45),
+            },
         },
     }
 
     estado = 'atacando' if player.attacking else 'parado'
-    dx, dy, angulo = config[estado][player.weapon][player.direction]
+    dx, dy, angulo = config[player.weapon][estado][player.direction]
 
     if angulo != 0:
         weapon_img = pygame.transform.rotate(weapon_img, angulo)

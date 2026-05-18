@@ -87,18 +87,25 @@ class Player:
         scale_factor = 1.10 
 
         self.animacoes = {
-            'down': _scale_frames(frames[6][:4], scale_factor),
-            'left': _scale_frames(frames[1][:4], scale_factor),
-            'right': _scale_frames(frames[3][:4], scale_factor),
-            'up': _scale_frames(frames[2][:4], scale_factor),
+            'down':       _scale_frames(frames[6][:4], scale_factor),
+            'left':       _scale_frames(frames[0][:4], scale_factor),
+            'right':      _scale_frames(frames[4][:4], scale_factor),
+            'up':         _scale_frames(frames[2][:4], scale_factor),
+            'up_left':    _scale_frames(frames[1][:4], scale_factor),
+            'up_right':   _scale_frames(frames[3][:4], scale_factor),
+            'down_right': _scale_frames(frames[5][:4], scale_factor),
+            'down_left':  _scale_frames(frames[7][:4], scale_factor),
         }
 
-        # A primeira fileira funciona bem como animacao de ataque/soco.
         self.attack_frames = {
-            'down': frames[6],
-            'left': frames[1],
-            'right': frames[3],
-            'up': frames[2],
+            'down':       frames[6],
+            'left':       frames[0],
+            'right':      frames[4],
+            'up':         frames[2],
+            'up_left':    frames[1],
+            'up_right':   frames[3],
+            'down_right': frames[5],
+            'down_left':  frames[7],
         }
 
         self.direction = 'down'
@@ -165,16 +172,26 @@ class Player:
         self.update_attack_box()
         return True
 
-    def update_attack_box(self): #Cria a área de ataque na frente do personagem, dependendo da direção.
-        box_size = self.attack_range
-        if self.attack_direction == 'up':
-            self.attack_box = pygame.Rect(self.x - box_size // 2, self.y - box_size, box_size, box_size)
-        elif self.attack_direction == 'down':
-            self.attack_box = pygame.Rect(self.x - box_size // 2, self.y + 10, box_size, box_size)
-        elif self.attack_direction == 'left':
-            self.attack_box = pygame.Rect(self.x - box_size, self.y - box_size // 2, box_size, box_size)
-        else:
-            self.attack_box = pygame.Rect(self.x + 10, self.y - box_size // 2, box_size, box_size)
+    def update_attack_box(self):
+        s = self.attack_range
+        h = s // 2
+        d = self.attack_direction
+        if d == 'up':
+            self.attack_box = pygame.Rect(self.x - h,  self.y - s,  s, s)
+        elif d == 'down':
+            self.attack_box = pygame.Rect(self.x - h,  self.y + 10, s, s)
+        elif d == 'left':
+            self.attack_box = pygame.Rect(self.x - s,  self.y - h,  s, s)
+        elif d == 'right':
+            self.attack_box = pygame.Rect(self.x + 10, self.y - h,  s, s)
+        elif d == 'up_right':
+            self.attack_box = pygame.Rect(self.x + 10, self.y - s,  s, s)
+        elif d == 'up_left':
+            self.attack_box = pygame.Rect(self.x - s,  self.y - s,  s, s)
+        elif d == 'down_right':
+            self.attack_box = pygame.Rect(self.x + 10, self.y + 10, s, s)
+        elif d == 'down_left':
+            self.attack_box = pygame.Rect(self.x - s,  self.y + 10, s, s)
 
     def update(self): #Atualiza o movimento, a direção, a animação e o ataque.
         self.old_x = self.x
@@ -192,7 +209,12 @@ class Player:
         moving = (self.dx != 0 or self.dy != 0)
 
         if moving:
-            if abs(self.dx) > abs(self.dy):
+            if self.dx != 0 and self.dy != 0:
+                if   self.dx > 0 and self.dy < 0: self.direction = 'up_right'
+                elif self.dx < 0 and self.dy < 0: self.direction = 'up_left'
+                elif self.dx > 0 and self.dy > 0: self.direction = 'down_right'
+                else:                             self.direction = 'down_left'
+            elif self.dx != 0:
                 self.direction = 'right' if self.dx > 0 else 'left'
             else:
                 self.direction = 'down' if self.dy > 0 else 'up'
@@ -239,10 +261,14 @@ class Enemy:
         frames = cortar_spritesheet(self.sheet, frame_w, frame_h)
 
         self.animacoes = {
-            'down': _scale_frames(frames[6][:4], self.SCALE),
-            'left': _scale_frames(frames[1][:4], self.SCALE),
-            'right': _scale_frames(frames[3][:4], self.SCALE),
-            'up': _scale_frames(frames[2][:4], self.SCALE),
+            'down':       _scale_frames(frames[6][:4], self.SCALE),
+            'left':       _scale_frames(frames[0][:4], self.SCALE),
+            'right':      _scale_frames(frames[4][:4], self.SCALE),
+            'up':         _scale_frames(frames[2][:4], self.SCALE),
+            'up_left':    _scale_frames(frames[1][:4], self.SCALE),
+            'up_right':   _scale_frames(frames[3][:4], self.SCALE),
+            'down_right': _scale_frames(frames[5][:4], self.SCALE),
+            'down_left':  _scale_frames(frames[7][:4], self.SCALE),
         }
 
         self.direction = 'down'
@@ -275,7 +301,13 @@ class Enemy:
             self.x += step * dx / dist
             self.y += step * dy / dist
 
-            if abs(dx) > abs(dy):
+            maior = max(abs(dx), abs(dy))
+            if maior > 0 and min(abs(dx), abs(dy)) / maior > 0.4:
+                if   dx > 0 and dy < 0: self.direction = 'up_right'
+                elif dx < 0 and dy < 0: self.direction = 'up_left'
+                elif dx > 0 and dy > 0: self.direction = 'down_right'
+                else:                   self.direction = 'down_left'
+            elif abs(dx) > abs(dy):
                 self.direction = 'right' if dx > 0 else 'left'
             else:
                 self.direction = 'down' if dy > 0 else 'up'
