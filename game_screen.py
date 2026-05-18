@@ -54,41 +54,30 @@ def _spawn_enemy(map_width, map_height, assets, player_x, player_y):
         return Lobisomem(x, y, assets)
     
 def posiciona_arma(player, player_center_x, player_center_y, weapon_img):
-    if player.attacking:
-        offsets = {
-        'Espada': {'right': (47, -35),  'left': (-30, -22), 'up': (0,-50), 'down': (-2,45)},
-        'Arco':   {'right': (26, -32),  'left': (-20, -27),   'up': (2, -25), 'down': (7, 15)},
-        'Cajado': {'right': (60, -20),  'left': (-40, -10),   'up': (0, -57), 'down': (-5, 45)},
-        'Punhos': {'right': (34, 8),  'left': (40, 8),   'up': (5, -36), 'down': (-25, 12)},
-    }
-        rotations = {
-        'Espada': {'right':   0, 'left': 120, 'up':  45, 'down': -90},
-        'Arco':   {'right':   130, 'left': -70, 'up':  240, 'down': 10},
-        'Cajado': {'right':   60, 'left': 210, 'up':  140, 'down': -30},
-        'Punhos': {'right':   0, 'left': 180, 'up':  90, 'down': -90},
-    }
-    else: 
-        offsets = {
-        'Espada': {'right': (38, 5),  'left': (18, -18), 'up': (40, -15), 'down': (-20, 12)},
-        'Arco':   {'right': (7, 19),  'left': (-15, -7),   'up': (2, -25), 'down': (0, 5)},
-        'Cajado': {'right': (25, 6),  'left': (36, 2),   'up': (40, 12), 'down': (-20, 12)},
-        'Punhos': {'right': (34, 8),  'left': (40, 8),   'up': (5, -36), 'down': (-25, 12)},
-    }
-        rotations = {
-        'Espada': {'right':   0, 'left': 90, 'up':  45, 'down': -90},
-        'Arco':   {'right':   110, 'left': -70, 'up':  270, 'down': -20},
-        'Cajado': {'right':   90, 'left': 180, 'up':  135, 'down': 0},
-        'Punhos': {'right':   0, 'left': 180, 'up':  90, 'down': -90},
+    # Cada entrada: (offset_x, offset_y, rotacao)
+    config = {
+        'atacando': {
+            'Espada': {'right': (47, -35,   0), 'left': (-30, -22, 120), 'up': (  0, -50,  45), 'down': ( -2,  45, -90)},
+            'Arco':   {'right': (26, -32, 130), 'left': (-20, -27, -70), 'up': (  2, -25, 240), 'down': (  7,  15,  10)},
+            'Cajado': {'right': (60, -20,  60), 'left': (-40, -10, 210), 'up': (  0, -57, 140), 'down': ( -5,  45, -30)},
+            'Punhos': {'right': (34,   8,   0), 'left': ( 40,   8, 180), 'up': (  5, -36,  90), 'down': (-25,  12, -90)},
+        },
+        'parado': {
+            'Espada': {'right': (38,   5,   0), 'left': ( 18, -18,  90), 'up': ( 40, -15,  45), 'down': (-20,  12, -90)},
+            'Arco':   {'right': ( 7,  19, 110), 'left': (-15,  -7, -70), 'up': (  2, -25, 270), 'down': (  0,   5, -20)},
+            'Cajado': {'right': (25,   6,  90), 'left': ( 36,   2, 180), 'up': ( 40,  12, 135), 'down': (-20,  12,   0)},
+            'Punhos': {'right': (34,   8,   0), 'left': ( 40,   8, 180), 'up': (  5, -36,  90), 'down': (-25,  12, -90)},
+        },
     }
 
-    deslocamento = offsets[player.weapon][player.direction]
+    estado = 'atacando' if player.attacking else 'parado'
+    dx, dy, angulo = config[estado][player.weapon][player.direction]
 
-    angulo = rotations[player.weapon][player.direction]
     if angulo != 0:
         weapon_img = pygame.transform.rotate(weapon_img, angulo)
 
     weapon_rect = weapon_img.get_rect()
-    weapon_rect.center = (player_center_x + deslocamento[0], player_center_y + deslocamento[1])
+    weapon_rect.center = (player_center_x + dx, player_center_y + dy)
 
     return weapon_img, weapon_rect
 
