@@ -95,10 +95,10 @@ class Player:
 
         # A primeira fileira funciona bem como animacao de ataque/soco.
         self.attack_frames = {
-            'down': frames[0],
-            'left': frames[0],
-            'right': frames[0],
-            'up': frames[0],
+            'down': frames[6],
+            'left': frames[1],
+            'right': frames[3],
+            'up': frames[2],
         }
 
         self.direction = 'down'
@@ -210,8 +210,14 @@ class Player:
                 self.attack_box = pygame.Rect(0, 0, 0, 0)
 
     def get_current_frame(self): #Retorna o frame certo da animação no momento atual.
-        frames = self.attack_frames[self.attack_direction] if self.attacking else self.animacoes[self.direction]
-        frame_index = int(self.frame_timer) % len(frames)
+        if self.attacking:
+            frames = self.attack_frames[self.attack_direction]
+            if self.weapon == 'Arco':
+                frame_index = 5
+            else: frame_index = 4
+        else:   
+            frames = self.animacoes[self.direction]
+            frame_index = int(self.frame_timer) % len(frames)
         return frames[frame_index]
 
 

@@ -52,6 +52,46 @@ def _spawn_enemy(map_width, map_height, assets, player_x, player_y):
         return Esqueleto(x, y, assets)
     else:
         return Lobisomem(x, y, assets)
+    
+def posiciona_arma(player, player_center_x, player_center_y, weapon_img):
+    if player.attacking:
+        offsets = {
+        'Espada': {'right': (47, -35),  'left': (-30, -22), 'up': (0,-50), 'down': (-2,45)},
+        'Arco':   {'right': (26, -32),  'left': (-20, -27),   'up': (2, -25), 'down': (7, 15)},
+        'Cajado': {'right': (60, -20),  'left': (-40, -10),   'up': (0, -57), 'down': (-5, 45)},
+        'Punhos': {'right': (34, 8),  'left': (40, 8),   'up': (5, -36), 'down': (-25, 12)},
+    }
+        rotations = {
+        'Espada': {'right':   0, 'left': 120, 'up':  45, 'down': -90},
+        'Arco':   {'right':   130, 'left': -70, 'up':  240, 'down': 10},
+        'Cajado': {'right':   60, 'left': 210, 'up':  140, 'down': -30},
+        'Punhos': {'right':   0, 'left': 180, 'up':  90, 'down': -90},
+    }
+    else: 
+        offsets = {
+        'Espada': {'right': (38, 5),  'left': (18, -18), 'up': (40, -15), 'down': (-20, 12)},
+        'Arco':   {'right': (7, 19),  'left': (-15, -7),   'up': (2, -25), 'down': (0, 5)},
+        'Cajado': {'right': (25, 6),  'left': (36, 2),   'up': (40, 12), 'down': (-20, 12)},
+        'Punhos': {'right': (34, 8),  'left': (40, 8),   'up': (5, -36), 'down': (-25, 12)},
+    }
+        rotations = {
+        'Espada': {'right':   0, 'left': 90, 'up':  45, 'down': -90},
+        'Arco':   {'right':   110, 'left': -70, 'up':  270, 'down': -20},
+        'Cajado': {'right':   90, 'left': 180, 'up':  135, 'down': 0},
+        'Punhos': {'right':   0, 'left': 180, 'up':  90, 'down': -90},
+    }
+
+    deslocamento = offsets[player.weapon][player.direction]
+
+    angulo = rotations[player.weapon][player.direction]
+    if angulo != 0:
+        weapon_img = pygame.transform.rotate(weapon_img, angulo)
+
+    weapon_rect = weapon_img.get_rect()
+    weapon_rect.center = (player_center_x + deslocamento[0], player_center_y + deslocamento[1])
+
+    return weapon_img, weapon_rect
+
 
 
 def game_screen(screen, assets):
@@ -214,7 +254,7 @@ def game_screen(screen, assets):
         # player_frame = pygame.transform.smoothscale(player_frame, (int(largura_boneco * 1.25), int(altura_boneco * 1.25)))
         cx = LARGURA_TELA // 2 - player_frame.get_width() // 2
         cy = ALTURA_TELA // 2 - player_frame.get_height() // 2
-        screen.blit(player_frame, (cx, cy))
+       
 
         # Desenha a arma equipada na mao do personagem.
         '''if player.weapon_image:
@@ -233,29 +273,13 @@ def game_screen(screen, assets):
         if player.weapon_image:
             weapon_img = pygame.transform.smoothscale(
                 player.weapon_image,
-                (int(player.weapon_image.get_width() * 0.55), int(player.weapon_image.get_height() * 0.55))
+                (player.weapon_image.get_width(), player.weapon_image.get_height())
             )
 
             player_center_x = cx + player_frame.get_width() // 2
             player_center_y = cy + player_frame.get_height() // 2
 
-            weapon_rect = weapon_img.get_rect()
-
-            if player.direction == 'right':
-                weapon_rect.midleft = (player_center_x + 10, player_center_y + 6)
-
-            elif player.direction == 'left':
-                weapon_img = pygame.transform.flip(weapon_img, True, False)
-                weapon_rect.midright = (player_center_x - 10, player_center_y + 6)
-
-            elif player.direction == 'up':
-                weapon_img = pygame.transform.rotate(weapon_img, 90)
-                weapon_rect.midbottom = (player_center_x + 2, player_center_y - 10)
-
-            else:  # down
-                weapon_img = pygame.transform.rotate(weapon_img, -90)
-                weapon_rect.midtop = (player_center_x + 2, player_center_y + 10)
-
+            weapon_img, weapon_rect = posiciona_arma(player, player_center_x, player_center_y, weapon_img)
             screen.blit(weapon_img, weapon_rect.topleft)
 
         # HUD
@@ -266,6 +290,7 @@ def game_screen(screen, assets):
         _draw_text(screen, font_mid, f'Moedas: {player.coins}', 30, 62)
         _draw_text(screen, font_small, f'Arma: {player.weapon}', 30, 100)
         _draw_text(screen, font_small, 'Mover: WASD | Atacar: J ou ESPACO', 30, 128)
+        screen.blit(player_frame, (cx, cy))
 
         if message_timer > pygame.time.get_ticks():
             msg = font_mid.render(message, True, (255, 240, 120))

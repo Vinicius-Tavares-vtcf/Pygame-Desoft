@@ -60,7 +60,7 @@ def load_assets():
     assets[ENEMY_ESQUELETO] = pygame.image.load(path.join(IMG_DIR, 'Esqueleto32bit.png')).convert_alpha()
     assets[ENEMY_LOBISOMEM] = pygame.image.load(path.join(IMG_DIR, 'Lobisomem32bit.png')).convert_alpha()
 
-    mage_sheet = pygame.image.load(path.join(IMG_DIR, 'Mago_Parado.png')).convert_alpha()
+    mage_sheet = pygame.image.load(path.join(IMG_DIR, 'Mago_Parado32bit.png')).convert_alpha()
 
     w = mage_sheet.get_width() // 2
     h = mage_sheet.get_height()
@@ -103,11 +103,11 @@ def load_assets():
         img = pygame.image.load(path.join(IMG_DIR, name)).convert_alpha()
         return pygame.transform.smoothscale(img, (180, 180))
 
-    assets['water_spell_1'] = load_spell('Water__01.png')
-    assets['water_spell_2'] = load_spell('Water__02.png')
-    assets['water_spell_3'] = load_spell('Water__03.png')
-    assets['water_spell_4'] = load_spell('Water__04.png')
-    assets['water_spell_5'] = load_spell('Water__05.png')
+    assets['water_spell_1'] = load_spell('Water__0132bit.png')
+    assets['water_spell_2'] = load_spell('Water__0232bit.png')
+    assets['water_spell_3'] = load_spell('Water__0332bit.png')
+    assets['water_spell_4'] = load_spell('Water__0432bit.png')
+    assets['water_spell_5'] = load_spell('Water__0532bit.png')
 
     # ----- Sons
     music_path = path.join(SND_DIR, 'Musica-Epica.mp3')
