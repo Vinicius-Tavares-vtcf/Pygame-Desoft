@@ -59,7 +59,40 @@ def load_assets():
     assets['player_sheet'] = pygame.image.load(path.join(IMG_DIR, 'Personagem32bit.png')).convert_alpha()
     assets[ENEMY_ESQUELETO] = pygame.image.load(path.join(IMG_DIR, 'Esqueleto32bit.png')).convert_alpha()
     assets[ENEMY_LOBISOMEM] = pygame.image.load(path.join(IMG_DIR, 'Lobisomem32bit.png')).convert_alpha()
-    assets[ENEMY_MAGO] = pygame.image.load(path.join(IMG_DIR, 'Mago32bit.png')).convert_alpha()
+
+    mage_sheet = pygame.image.load(path.join(IMG_DIR, 'Mago_Parado.png')).convert_alpha()
+
+    w = mage_sheet.get_width() // 2
+    h = mage_sheet.get_height()
+
+    left = mage_sheet.subsurface((0, 0, w, h)).copy()
+    right = mage_sheet.subsurface((w, 0, w, h)).copy()
+
+    # remove fundo/transparência sobrando
+    left_rect = left.get_bounding_rect()
+    right_rect = right.get_bounding_rect()
+
+    if left_rect.width > 0 and left_rect.height > 0:
+        left = left.subsurface(left_rect).copy()
+
+    if right_rect.width > 0 and right_rect.height > 0:
+        right = right.subsurface(right_rect).copy()
+
+    # reduz tamanho
+    scale = 0.35
+
+    left = pygame.transform.smoothscale(
+        left,
+        (int(left.get_width() * scale), int(left.get_height() * scale))
+    )
+
+    right = pygame.transform.smoothscale(
+        right,
+        (int(right.get_width() * scale), int(right.get_height() * scale))
+    )
+
+    assets['mago_left'] = left
+    assets['mago_right'] = right
 
     # As armas no mapa e na mao do personagem precisam ficar maiores para serem visiveis.
     assets[WEAPON_ESPADA] = pygame.image.load(path.join(IMG_DIR, 'Espada32bit.png')).convert_alpha()

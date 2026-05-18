@@ -13,8 +13,33 @@ def _draw_text(screen, font, text, x, y, color=(255, 255, 255)):
 
 
 def _spawn_enemy(map_width, map_height, assets, player_x, player_y):
-    enemy_classes = [Esqueleto, Lobisomem, Mago]
-    cls = random.choice(enemy_classes)
+    enemy_type = random.choice(['esqueleto', 'lobisomem', 'mago'])
+
+    if enemy_type == 'mago':
+        centro_x = map_width // 2
+        centro_y = map_height // 2
+        raio = 760
+
+        lado = random.choice(['left', 'right', 'up', 'down'])
+
+        if lado == 'left':
+            x = centro_x - raio - 100
+            y = random.randint(centro_y - 250, centro_y + 250)
+            side = 'left'
+        elif lado == 'right':
+            x = centro_x + raio + 100
+            y = random.randint(centro_y - 250, centro_y + 250)
+            side = 'right'
+        elif lado == 'up':
+            x = random.randint(centro_x - 250, centro_x + 250)
+            y = centro_y - raio + 100
+            side = 'left'
+        else:
+            x = random.randint(centro_x - 250, centro_x + 250)
+            y = centro_y + raio
+            side = 'right'
+
+        return Mago(x, y, assets, side=side)
 
     angle = random.uniform(0, 6.28318)
     distance = random.randint(240, 520)
@@ -23,7 +48,10 @@ def _spawn_enemy(map_width, map_height, assets, player_x, player_y):
     x = max(100, min(x, map_width - 100))
     y = max(100, min(y, map_height - 100))
 
-    return cls(x, y, assets)
+    if enemy_type == 'esqueleto':
+        return Esqueleto(x, y, assets)
+    else:
+        return Lobisomem(x, y, assets)
 
 
 def game_screen(screen, assets):

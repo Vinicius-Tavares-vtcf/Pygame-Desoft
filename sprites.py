@@ -215,7 +215,7 @@ class Player:
         return frames[frame_index]
 
 
-class EnemyBase:
+class Enemy:
     KIND = ENEMY_ESQUELETO
     SPEED_RANGE = (2, 4)
     HP_RANGE = (2, 4)
@@ -285,17 +285,54 @@ class EnemyBase:
         return self.health <= 0
 
 
-class Esqueleto(EnemyBase):
-    KIND = ENEMY_ESQUELETO
+class Esqueleto(Enemy):
+    KIND = 'esqueleto'
+
+    def __init__(self, x, y, assets):
+        super().__init__(x, y, assets)
 
 
-class Lobisomem(EnemyBase):
-    KIND = ENEMY_LOBISOMEM
+class Lobisomem(Enemy):
+    KIND = 'lobisomem'
+
+    def __init__(self, x, y, assets):
+        super().__init__(x, y, assets)
 
 
-class Mago(EnemyBase):
-    KIND = ENEMY_MAGO
+class Mago:
+    def __init__(self, x, y, assets, side='left'):
+        self.kind = 'mago'
+        self.side = side
+        self.x = float(x)
+        self.y = float(y)
 
+        self.speed = 0
+        self.frame_timer = 0
+        self.frame_speed = 0
+        self.direction = 'left' if side == 'right' else 'right'
+
+        self.health = 4
+        self.max_health = 4
+        self.damage = 10
+        self.coins_reward = random.randint(1, 3)
+        self.hit_flash = 0
+
+        self.static_image = assets['mago_left'] if side == 'left' else assets['mago_right']
+
+    def rect(self):
+        return self.static_image.get_rect(center=(int(self.x), int(self.y)))
+
+    def get_current_frame(self):
+        return self.static_image
+
+    def update(self, player):
+        pass
+
+    def take_damage(self, damage):
+        self.health -= damage
+        self.hit_flash = pygame.time.get_ticks() + 120
+        return self.health <= 0
+    
 class WeaponPickup:
     def __init__(self, x, y, image, name):
         self.name = name
