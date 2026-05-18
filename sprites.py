@@ -306,18 +306,20 @@ class Mago:
         self.x = float(x)
         self.y = float(y)
 
-        self.speed = 0
-        self.frame_timer = 0
-        self.frame_speed = 0
-        self.direction = 'left' if side == 'right' else 'right'
-
         self.health = 4
         self.max_health = 4
         self.damage = 10
         self.coins_reward = random.randint(1, 3)
         self.hit_flash = 0
 
-        self.static_image = assets['mago_left'] if side == 'left' else assets['mago_right']
+        img = assets['mago_left'] if side == 'left' else assets['mago_right']
+        self.static_image = pygame.transform.smoothscale(
+            img,
+            (int(img.get_width() * 1.1), int(img.get_height() * 1.1))
+        )
+
+        self.last_cast_ms = 0
+        self.cast_cooldown_ms = 1800
 
     def rect(self):
         return self.static_image.get_rect(center=(int(self.x), int(self.y)))
@@ -332,6 +334,28 @@ class Mago:
         self.health -= damage
         self.hit_flash = pygame.time.get_ticks() + 120
         return self.health <= 0
+
+    def can_cast(self):
+        return pygame.time.get_ticks() - self.last_cast_ms >= self.cast_cooldown_ms
+
+    def cast_spell(self, assets, arena_center_x, arena_center_y):
+        self.last_cast_ms = pygame.time.get_ticks()
+
+        start = pygame.Vector2(self.x, self.y)
+        center = pygame.Vector2(arena_center_x, arena_center_y)
+
+        # destino no lado oposto do círculo
+        end = center * 2 - start
+
+        frames = [
+            assets['water_spell_1'],
+            assets['water_spell_2'],
+            assets['water_spell_3'],
+            assets['water_spell_4'],
+            assets['water_spell_5'],
+        ]
+
+        return MageSpell(self.x, self.y, end.x, end.y, frames, speed=10, damage=12)
     
 class WeaponPickup:
     def __init__(self, x, y, image, name):
@@ -349,3 +373,54 @@ class WeaponPickup:
         sx = self.rect.x - cam_x
         sy = self.rect.y - cam_y
         screen.blit(self.image, (sx, sy))
+
+class MageSpell:
+    def __init__(self, start_x, start_y, end_x, end_y, frames, speed=8, damage=10):
+        self.pos = pygame.Vector2(start_x, start_y)
+        self.start = pygame.Vector2(start_x, start_y)
+        self.end = pygame.Vector2(end_x, end_y)
+
+        self.frames = frames
+        self.speed = speed
+        self.damage = damage
+
+        self.direction = self.end - self.start
+        self.total_distance = self.direction.length()
+        if self.total_distance == 0:
+            self.total_distance = 1
+        self.direction = self.direction.normalize()
+
+        self.traveled = 0.0
+        self.frame_index = 0
+        self.alive = True
+
+    def update(self, player):
+        if not self.alive:
+            return
+
+        self.pos += self.direction * self.speed
+        self.traveled += self.speed
+
+        progress = min(1.0, self.traveled / self.total_distance)
+        self.frame_index = min(4, int(progress * 5))
+
+        spell_rect = self.rect()
+        player_rect = pygame.Rect(player.x - 18, player.y - 34, 36, 68)
+
+        if spell_rect.colliderect(player_rect):
+            player.health -= self.damage
+            self.alive = False
+
+        if self.traveled >= self.total_distance:
+            self.alive = False
+
+    def rect(self):
+        img = self.frames[self.frame_index]
+        return img.get_rect(center=(int(self.pos.x), int(self.pos.y)))
+
+    def draw(self, screen, cam_x, cam_y):
+        if not self.alive:
+            return
+        img = self.frames[self.frame_index]
+        r = self.rect()
+        screen.blit(img, (r.x - cam_x, r.y - cam_y))

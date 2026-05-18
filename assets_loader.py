@@ -99,6 +99,16 @@ def load_assets():
     assets[WEAPON_ARCO] = pygame.image.load(path.join(IMG_DIR, 'Arco32bit.png')).convert_alpha()
     assets[WEAPON_CAJADO] = pygame.image.load(path.join(IMG_DIR, 'Cajado32bit.png')).convert_alpha()
 
+    def load_spell(name):
+        img = pygame.image.load(path.join(IMG_DIR, name)).convert_alpha()
+        return pygame.transform.smoothscale(img, (180, 180))
+
+    assets['water_spell_1'] = load_spell('Water__01.png')
+    assets['water_spell_2'] = load_spell('Water__02.png')
+    assets['water_spell_3'] = load_spell('Water__03.png')
+    assets['water_spell_4'] = load_spell('Water__04.png')
+    assets['water_spell_5'] = load_spell('Water__05.png')
+
     # ----- Sons
     music_path = path.join(SND_DIR, 'Musica-Epica.mp3')
     assets[MUSICA_INICIAL] = music_path

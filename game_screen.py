@@ -4,7 +4,7 @@ from config import *
 from assets_loader import *
 from sprites import *
 
-
+spells = []
 
 def _draw_text(screen, font, text, x, y, color=(255, 255, 255)):
     surf = font.render(text, True, color)
@@ -76,6 +76,7 @@ def game_screen(screen, assets):
         _spawn_enemy(map_width, map_height, assets, player.x, player.y)
         for _ in range(TARGET_ENEMIES)
     ]
+    spells = []
 
     running = True
     state = GAME
@@ -137,6 +138,18 @@ def game_screen(screen, assets):
         for enemy in enemies[:]:
             enemy.update(player)
 
+            # MAGO LANÇA FEITIÇO
+            if isinstance(enemy, Mago):
+                if enemy.can_cast():
+                    spell = enemy.cast_spell(
+                        assets,
+                        map_width // 2,
+                        map_height // 2
+                    )
+                    spells.append(spell)
+
+            enemy_rect = enemy.rect()
+
             enemy_rect = enemy.rect()
             if player.attacking and player.attack_box.colliderect(enemy_rect):
                 died = enemy.take_damage(player.weapon_damage)
@@ -146,6 +159,7 @@ def game_screen(screen, assets):
                     message = f'+{enemy.coins_reward} moedas'
                     message_timer = pygame.time.get_ticks() + 700
                     maintain_enemy_count()
+                    
                     continue
 
             # Dano por contato com o player.
@@ -158,6 +172,13 @@ def game_screen(screen, assets):
                     break
 
         maintain_enemy_count()
+
+        # Atualiza feitiços
+        for spell in spells[:]:
+            spell.update(player)
+
+            if not spell.alive:
+                spells.remove(spell)
 
         # Desenho
         screen.fill((0, 0, 0))
@@ -173,6 +194,10 @@ def game_screen(screen, assets):
                 tint.fill((255, 100, 100, 120), special_flags=pygame.BLEND_RGBA_ADD)
                 frame = tint
             screen.blit(frame, (enemy.x - vcamerax - frame.get_width() // 2, enemy.y - vcameray - frame.get_height() // 2))
+
+        # DESENHA OS FEITIÇOS AQUI
+        for spell in spells:
+            spell.draw(screen, vcamerax, vcameray)
 
         if player.attacking and player.attack_box.width > 0:
             debug_box = pygame.Rect(
