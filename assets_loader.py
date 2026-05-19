@@ -21,6 +21,13 @@ ENEMY_ESQUELETO = 'esqueleto'
 ENEMY_LOBISOMEM = 'lobisomem'
 ENEMY_MAGO = 'mago'
 
+SFX_SWORD = 'sfx_sword'
+SFX_HIT = 'sfx_hit'
+SFX_FIREBALL = 'sfx_fireball'
+SFX_ENEMY_DEATH = 'sfx_enemy_death'
+SFX_MONSTER_BITE = 'sfx_monster_bite'
+SFX_MONSTER_DEATH = 'sfx_monster_death'
+
 
 def _load_optional_sound(folder, pattern):
     matches = sorted(glob.glob(path.join(folder, pattern)))
@@ -116,5 +123,20 @@ def load_assets():
     # O arquivo veio com nome quebrado em algumas copias do zip; tentamos achar a variante correta.
     sound_path = _load_optional_sound(SND_DIR, 'Rudgio Le*.ogg')
     assets[VIDEO_INICIAL] = sound_path
+
+    # ----- Efeitos sonoros de combate
+    assets[SFX_SWORD] = pygame.mixer.Sound(path.join(SND_DIR, 'combat', 'sword_slash.wav.mp3'))
+    assets[SFX_HIT] = pygame.mixer.Sound(path.join(SND_DIR, 'combat', 'hit.wav.mp3'))
+    assets[SFX_MONSTER_BITE] = pygame.mixer.Sound(path.join(SND_DIR, 'combat', 'monsterbite.waw.mp3'))
+    assets[SFX_FIREBALL] = pygame.mixer.Sound(path.join(SND_DIR, 'magic', 'fireball.wav.mp3'))
+    assets[SFX_ENEMY_DEATH] = pygame.mixer.Sound(path.join(SND_DIR, 'enemy', 'death.wav.mp3'))
+    assets[SFX_MONSTER_DEATH] = pygame.mixer.Sound(path.join(SND_DIR, 'enemy', 'monsterdeath.waw.mp3'))
+
+    assets[SFX_SWORD].set_volume(0.4)
+    assets[SFX_HIT].set_volume(0.5)
+    assets[SFX_MONSTER_BITE].set_volume(0.6)
+    assets[SFX_FIREBALL].set_volume(0.5)
+    assets[SFX_ENEMY_DEATH].set_volume(0.6)
+    assets[SFX_MONSTER_DEATH].set_volume(0.6)
 
     return assets

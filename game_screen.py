@@ -11,6 +11,15 @@ def _draw_text(screen, font, text, x, y, color=(255, 255, 255)):
     screen.blit(surf, (x, y))
 
 
+def _shrink_rect(rect, scale_x, scale_y):
+    new_width = max(1, int(rect.width * scale_x))
+    new_height = max(1, int(rect.height * scale_y))
+    return pygame.Rect(0, 0, new_width, new_height).move(
+        rect.centerx - new_width // 2,
+        rect.centery - new_height // 2,
+    )
+
+
 
 def _spawn_enemy(map_width, map_height, assets, player_x, player_y):
     enemy_type = random.choice(['esqueleto', 'lobisomem', 'mago'])
@@ -123,7 +132,7 @@ def game_screen(screen, assets):
     font_mid = pygame.font.SysFont('arial', 32, bold=True)
 
     weapon_pickups = [
-        WeaponPickup(map_width // 2 - 180, map_height // 2 + 130, assets[WEAPON_ESPADA], 'Espada', price=30),
+        WeaponPickup(map_width // 2 - 180, map_height // 2 + 130, assets[WEAPON_ESPADA], 'Espada', price=50),
         WeaponPickup(map_width // 2 + 220, map_height // 2 - 120, assets[WEAPON_ARCO], 'Arco', price=10),
         WeaponPickup(map_width // 2 + 40, map_height // 2 + 220, assets[WEAPON_CAJADO], 'Cajado', price=20),
     ]
@@ -143,10 +152,26 @@ def game_screen(screen, assets):
     message_timer = 0
     shop_message = ''
     shop_message_timer = 0
+    contact_damage_cooldowns = {}
+    attack_hit_enemies = set()
+    CONTACT_DAMAGE_COOLDOWN_MS = 450
+    MONSTER_DAMAGE_COOLDOWN_MS = 2000
 
     def maintain_enemy_count():
         while len(enemies) < TARGET_ENEMIES:
             enemies.append(_spawn_enemy(map_width, map_height, assets, player.x, player.y))
+
+    def kill_enemy(enemy):
+        death_sound = SFX_MONSTER_DEATH if enemy.kind == 'lobisomem' else SFX_ENEMY_DEATH
+        death_channel = pygame.mixer.find_channel(True)
+        if death_channel:
+            death_channel.play(assets[death_sound])
+        else:
+            assets[death_sound].play()
+        player.coins += enemy.coins_reward
+        enemies.remove(enemy)
+        contact_damage_cooldowns.pop(id(enemy), None)
+        return f'+{enemy.coins_reward} moedas'
 
     while running:
         clock.tick(FPS)
@@ -159,6 +184,9 @@ def game_screen(screen, assets):
             if event.type == pygame.KEYDOWN:
                 if event.key in (pygame.K_j, pygame.K_SPACE):
                     if player.start_attack():
+                        attack_hit_enemies.clear()
+                        if player.weapon == 'Espada':
+                            assets[SFX_SWORD].play()
                         message = 'Ataque!'
                         message_timer = pygame.time.get_ticks() + 400
                 # Compra da arma
@@ -227,21 +255,35 @@ def game_screen(screen, assets):
             enemy_rect = enemy.rect()
 
             enemy_rect = enemy.rect()
-            if player.attacking and player.attack_box.colliderect(enemy_rect):
-                died = enemy.take_damage(player.weapon_damage)
+            enemy_key = id(enemy)
+            if player.attacking and enemy_key not in attack_hit_enemies and player.attack_box.colliderect(enemy_rect):
+                attack_hit_enemies.add(enemy_key)
+                died = enemy.take_damage(player.weapon_damage, player.weapon)
+
                 if died:
-                    player.coins += enemy.coins_reward
-                    enemies.remove(enemy)
-                    message = f'+{enemy.coins_reward} moedas'
+                    message = kill_enemy(enemy)
                     message_timer = pygame.time.get_ticks() + 700
                     maintain_enemy_count()
                     
                     continue
+                else:
+                    assets[SFX_HIT].play()
 
             # Dano por contato com o player.
-            if enemy_rect.colliderect(player_rect):
-                if pygame.time.get_ticks() % 20 < 10:
-                    player.health -= 1
+            player_contact_rect = _shrink_rect(player_rect, 0.75, 0.70)
+            enemy_contact_rect = _shrink_rect(enemy_rect, 0.45, 0.45)
+
+            if enemy_contact_rect.colliderect(player_contact_rect):
+                now = pygame.time.get_ticks()
+                contact_cooldown = MONSTER_DAMAGE_COOLDOWN_MS if enemy.kind == 'lobisomem' else CONTACT_DAMAGE_COOLDOWN_MS
+                last_contact_damage = contact_damage_cooldowns.get(enemy_key, -contact_cooldown)
+
+                if enemy.damage > 0 and now - last_contact_damage >= contact_cooldown:
+                    player.take_damage(enemy.damage)
+                    damage_sound = SFX_MONSTER_BITE if enemy.kind == 'lobisomem' else SFX_HIT
+                    assets[damage_sound].play()
+                    contact_damage_cooldowns[enemy_key] = now
+
                 if player.health <= 0:
                     state = INIT
                     running = False
@@ -251,7 +293,9 @@ def game_screen(screen, assets):
 
         # Atualiza feitiços
         for spell in spells[:]:
-            spell.update(player)
+            hit_player = spell.update(player)
+            if hit_player:
+                assets[SFX_FIREBALL].play()
 
             if not spell.alive:
                 spells.remove(spell)
@@ -268,7 +312,7 @@ def game_screen(screen, assets):
             frame = enemy.get_current_frame()
             if enemy.hit_flash > pygame.time.get_ticks() > 0:
                 tint = frame.copy()
-                tint.fill((255, 100, 100, 120), special_flags=pygame.BLEND_RGBA_ADD)
+                tint.fill((200, 150, 150), special_flags=pygame.BLEND_RGBA_MULT)
                 frame = tint
             screen.blit(frame, (enemy.x - vcamerax - frame.get_width() // 2, enemy.y - vcameray - frame.get_height() // 2))
 
@@ -276,16 +320,11 @@ def game_screen(screen, assets):
         for spell in spells:
             spell.draw(screen, vcamerax, vcameray)
 
-        if player.attacking and player.attack_box.width > 0:
-            debug_box = pygame.Rect(
-                player.attack_box.x - vcamerax,
-                player.attack_box.y - vcameray,
-                player.attack_box.width,
-                player.attack_box.height,
-            )
-            pygame.draw.rect(screen, (255, 215, 0), debug_box, 2)
-
         player_frame = player.get_current_frame()
+        if player.hit_flash > pygame.time.get_ticks() > 0:
+            tint = player_frame.copy()
+            tint.fill((200, 150, 150), special_flags=pygame.BLEND_RGBA_MULT)
+            player_frame = tint
         largura_boneco = player_frame.get_width()
         altura_boneco = player_frame.get_height()
         # player_frame = pygame.transform.smoothscale(player_frame, (int(largura_boneco * 1.25), int(altura_boneco * 1.25)))

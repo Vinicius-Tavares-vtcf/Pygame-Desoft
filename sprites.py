@@ -125,6 +125,7 @@ class Player:
         self.attack_direction = self.direction
         self.attack_box = pygame.Rect(0, 0, 0, 0)
         self.weapon_image = None
+        self.hit_flash = 0
 
 
     '''def equip(self, weapon_name): #Troca a arma do jogador e ajusta dano, alcance e imagem da arma.
@@ -194,6 +195,7 @@ class Player:
             self.attack_box = pygame.Rect(self.x - s,  self.y + 10, s, s)
 
     def update(self): #Atualiza o movimento, a direção, a animação e o ataque.
+        now = pygame.time.get_ticks()
         self.old_x = self.x
         self.old_y = self.y
 
@@ -227,9 +229,16 @@ class Player:
 
         if self.attacking:
             self.update_attack_box()
-            if pygame.time.get_ticks() - self.attack_start_ms > self.attack_duration_ms:
+            if now - self.attack_start_ms > self.attack_duration_ms:
                 self.attacking = False
                 self.attack_box = pygame.Rect(0, 0, 0, 0)
+
+        if self.hit_flash > 0 and now >= self.hit_flash:
+            self.hit_flash = 0
+
+    def take_damage(self, damage):
+        self.health = max(0, self.health - damage)
+        self.hit_flash = pygame.time.get_ticks() + 120
 
     def get_current_frame(self): #Retorna o frame certo da animação no momento atual.
         if self.attacking:
@@ -247,7 +256,12 @@ class Enemy:
     KIND = ENEMY_ESQUELETO
     SPEED_RANGE = (2, 4)
     HP_RANGE = (2, 4)
-    DAMAGE = 10
+    HITS_TO_DIE_BY_WEAPON = {
+        'Punhos': 3,
+        'Cajado': 2,
+        'Espada': 1,
+    }
+    DAMAGE = 3
     COINS_RANGE = (1, 3)
     SCALE = 1.1
     FRAME_SPEED = 0.12
@@ -278,6 +292,7 @@ class Enemy:
         self.speed = random.randint(*self.SPEED_RANGE)
         self.max_health = random.randint(*self.HP_RANGE)
         self.health = self.max_health
+        self.hits_taken = 0
         self.damage = self.DAMAGE
         self.coins_reward = random.randint(*self.COINS_RANGE)
         self.hit_flash = 0
@@ -317,14 +332,23 @@ class Enemy:
         if self.hit_flash > 0 and now >= self.hit_flash:
             self.hit_flash = 0
 
-    def take_damage(self, damage):
-        self.health -= damage
+    def take_damage(self, damage, weapon_name=None):
+        self.hits_taken += 1
+        hits_to_die = self.HITS_TO_DIE_BY_WEAPON.get(weapon_name, self.HITS_TO_DIE_BY_WEAPON['Punhos'])
+        self.health = max(0, hits_to_die - self.hits_taken)
         self.hit_flash = pygame.time.get_ticks() + 120
-        return self.health <= 0
+        return self.hits_taken >= hits_to_die
 
 
 class Esqueleto(Enemy):
     KIND = 'esqueleto'
+    HP_RANGE = (1, 1)
+    HITS_TO_DIE_BY_WEAPON = {
+        'Punhos': 2,
+        'Cajado': 1,
+        'Espada': 1,
+    }
+    DAMAGE = 1
 
     def __init__(self, x, y, assets):
         super().__init__(x, y, assets)
@@ -332,6 +356,13 @@ class Esqueleto(Enemy):
 
 class Lobisomem(Enemy):
     KIND = 'lobisomem'
+    HP_RANGE = (5, 5)
+    HITS_TO_DIE_BY_WEAPON = {
+        'Punhos': 5,
+        'Cajado': 3,
+        'Espada': 2,
+    }
+    DAMAGE = 3
 
     def __init__(self, x, y, assets):
         super().__init__(x, y, assets)
@@ -346,7 +377,13 @@ class Mago:
 
         self.health = 4
         self.max_health = 4
-        self.damage = 10
+        self.hits_taken = 0
+        self.hits_to_die_by_weapon = {
+            'Punhos': 3,
+            'Cajado': 2,
+            'Espada': 1,
+        }
+        self.damage = 0
         self.coins_reward = random.randint(1, 3)
         self.hit_flash = 0
 
@@ -368,10 +405,12 @@ class Mago:
     def update(self, player):
         pass
 
-    def take_damage(self, damage):
-        self.health -= damage
+    def take_damage(self, damage, weapon_name=None):
+        self.hits_taken += 1
+        hits_to_die = self.hits_to_die_by_weapon.get(weapon_name, self.hits_to_die_by_weapon['Punhos'])
+        self.health = max(0, hits_to_die - self.hits_taken)
         self.hit_flash = pygame.time.get_ticks() + 120
-        return self.health <= 0
+        return self.hits_taken >= hits_to_die
 
     def can_cast(self):
         return pygame.time.get_ticks() - self.last_cast_ms >= self.cast_cooldown_ms
@@ -393,7 +432,7 @@ class Mago:
             assets['water_spell_5'],
         ]
 
-        return MageSpell(self.x, self.y, end.x, end.y, frames, speed=10, damage=12)
+        return MageSpell(self.x, self.y, end.x, end.y, frames, speed=10, damage=2)
     
 class WeaponPickup:
     def __init__(self, x, y, image, name, price):
@@ -413,7 +452,7 @@ class WeaponPickup:
         screen.blit(self.image, (sx, sy))
 
 class MageSpell:
-    def __init__(self, start_x, start_y, end_x, end_y, frames, speed=8, damage=10):
+    def __init__(self, start_x, start_y, end_x, end_y, frames, speed=8, damage=2):
         self.pos = pygame.Vector2(start_x, start_y)
         self.start = pygame.Vector2(start_x, start_y)
         self.end = pygame.Vector2(end_x, end_y)
@@ -434,7 +473,7 @@ class MageSpell:
 
     def update(self, player):
         if not self.alive:
-            return
+            return False
 
         self.pos += self.direction * self.speed
         self.traveled += self.speed
@@ -446,11 +485,14 @@ class MageSpell:
         player_rect = pygame.Rect(player.x - 18, player.y - 34, 36, 68)
 
         if spell_rect.colliderect(player_rect):
-            player.health -= self.damage
+            player.take_damage(self.damage)
             self.alive = False
+            return True
 
         if self.traveled >= self.total_distance:
             self.alive = False
+
+        return False
 
     def rect(self):
         img = self.frames[self.frame_index]
