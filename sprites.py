@@ -141,9 +141,9 @@ class Player:
         self.weapon_image = self.weapon_images.get(weapon_name)'''
     def equip(self, weapon_name, weapon_sheet=None):
         weapons = {
-            'Espada': {'damage': 3, 'range': 66},
+            'Espada': {'damage': 4, 'range': 90},
             'Arco': {'damage': 2, 'range': 140},
-            'Cajado': {'damage': 4, 'range': 90},
+            'Cajado': {'damage': 3, 'range': 66},
             'Punhos': {'damage': 1, 'range': 48},
         }
 
@@ -396,18 +396,18 @@ class Mago:
         return MageSpell(self.x, self.y, end.x, end.y, frames, speed=10, damage=12)
     
 class WeaponPickup:
-    def __init__(self, x, y, image, name):
+    def __init__(self, x, y, image, name, price):
         self.name = name
+        self.price = price
         self.sheet = image
 
         frame = melhor_frame_visivel(self.sheet, grid=8)
-
         self.image = pygame.transform.smoothscale(frame, (60, 60))
         self.rect = self.image.get_rect(center=(x, y))
 
         self.equip_sheet = self.sheet
 
-    def draw(self, screen, cam_x, cam_y):
+    def draw(self, screen, cam_x, cam_y, show_hint=True):
         sx = self.rect.x - cam_x
         sy = self.rect.y - cam_y
         screen.blit(self.image, (sx, sy))

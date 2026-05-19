@@ -123,9 +123,9 @@ def game_screen(screen, assets):
     font_mid = pygame.font.SysFont('arial', 32, bold=True)
 
     weapon_pickups = [
-        WeaponPickup(map_width // 2 - 180, map_height // 2 + 130, assets[WEAPON_ESPADA], 'Espada'),
-        WeaponPickup(map_width // 2 + 220, map_height // 2 - 120, assets[WEAPON_ARCO], 'Arco'),
-        WeaponPickup(map_width // 2 + 40, map_height // 2 + 220, assets[WEAPON_CAJADO], 'Cajado'),
+        WeaponPickup(map_width // 2 - 180, map_height // 2 + 130, assets[WEAPON_ESPADA], 'Espada', price=30),
+        WeaponPickup(map_width // 2 + 220, map_height // 2 - 120, assets[WEAPON_ARCO], 'Arco', price=10),
+        WeaponPickup(map_width // 2 + 40, map_height // 2 + 220, assets[WEAPON_CAJADO], 'Cajado', price=20),
     ]
 
     TARGET_ENEMIES = 4
@@ -141,6 +141,8 @@ def game_screen(screen, assets):
     vcameray = (map_height - ALTURA_TELA) // 2
     message = ''
     message_timer = 0
+    shop_message = ''
+    shop_message_timer = 0
 
     def maintain_enemy_count():
         while len(enemies) < TARGET_ENEMIES:
@@ -148,6 +150,7 @@ def game_screen(screen, assets):
 
     while running:
         clock.tick(FPS)
+        buy_requested = False
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -158,6 +161,9 @@ def game_screen(screen, assets):
                     if player.start_attack():
                         message = 'Ataque!'
                         message_timer = pygame.time.get_ticks() + 400
+                # Compra da arma
+                if event.key == pygame.K_k:
+                    buy_requested = True
 
         keys = pygame.key.get_pressed()
         player.dx = 0
@@ -182,13 +188,26 @@ def game_screen(screen, assets):
         # Equipar arma ao tocar nela.
         player_rect = pygame.Rect(player.x - 18, player.y - 34, 36, 68)
         remaining_pickups = []
+        pickup_em_cima = None
+
         for pickup in weapon_pickups:
             if player_rect.colliderect(pickup.rect):
-                player.equip(pickup.name, pickup.equip_sheet)
-                message = f'Equipou {pickup.name}!'
-                message_timer = pygame.time.get_ticks() + 1200
-            else:
-                remaining_pickups.append(pickup)
+                shop_message = f'{pickup.price} moedas | Aperte K para comprar'
+                shop_message_timer = pygame.time.get_ticks() + 200
+
+                if buy_requested:
+                    if player.coins >= pickup.price:
+                        player.coins -= pickup.price
+                        player.equip(pickup.name, pickup.equip_sheet)
+                        message = f'Comprou {pickup.name} por {pickup.price} moedas!'
+                        message_timer = pygame.time.get_ticks() + 1200
+                        continue
+                    else:
+                        message = f'Precisa de {pickup.price} moedas!'
+                        message_timer = pygame.time.get_ticks() + 1200
+
+            remaining_pickups.append(pickup)
+
         weapon_pickups = remaining_pickups
 
         # Atualiza inimigos.
@@ -240,9 +259,10 @@ def game_screen(screen, assets):
         # Desenho
         screen.fill((0, 0, 0))
         screen.blit(background_arena, (-vcamerax, -vcameray))
-
         for pickup in weapon_pickups:
-            pickup.draw(screen, vcamerax, vcameray)
+            show_hint = player_rect.colliderect(pickup.rect)
+            pickup.draw(screen, vcamerax, vcameray, show_hint=show_hint)
+
 
         for enemy in enemies:
             frame = enemy.get_current_frame()
@@ -312,6 +332,9 @@ def game_screen(screen, assets):
         if message_timer > pygame.time.get_ticks():
             msg = font_mid.render(message, True, (255, 240, 120))
             screen.blit(msg, (LARGURA_TELA // 2 - msg.get_width() // 2, 30))
+        if shop_message_timer > pygame.time.get_ticks():
+            msg = font_mid.render(shop_message, True, (255, 240, 120))
+            screen.blit(msg, (LARGURA_TELA // 2 - msg.get_width() // 2, 60))
 
         if player.health <= 0:
             state = INIT
