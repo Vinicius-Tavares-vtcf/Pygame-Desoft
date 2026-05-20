@@ -11,6 +11,7 @@ TXT_BATALHAR = 'txt_batalhar'
 HOVER_BATALHAR = 'hover_batalhar'
 TXT_SAIR = 'txt_sair'
 MUSICA_INICIAL = 'musica_inicial'
+MUSICA_MIDGAME = 'musica_midgame'
 HOVER_SAIR = 'hover_sair'
 ARENA_COLISEU = 'Arena_Coliseu'
 
@@ -20,6 +21,7 @@ WEAPON_CAJADO = 'weapon_cajado'
 ENEMY_ESQUELETO = 'esqueleto'
 ENEMY_LOBISOMEM = 'lobisomem'
 ENEMY_MAGO = 'mago'
+ENEMY_MINOTAURO = 'minotauro'
 
 SFX_SWORD = 'sfx_sword'
 SFX_HIT = 'sfx_hit'
@@ -66,6 +68,7 @@ def load_assets():
     assets['player_sheet'] = pygame.image.load(path.join(IMG_DIR, 'PersonagemRomano32bit.png')).convert_alpha()
     assets[ENEMY_ESQUELETO] = pygame.image.load(path.join(IMG_DIR, 'Esqueleto32bit.png')).convert_alpha()
     assets[ENEMY_LOBISOMEM] = pygame.image.load(path.join(IMG_DIR, 'Lobisomem32bit.png')).convert_alpha()
+    assets[ENEMY_MINOTAURO] = pygame.image.load(path.join(IMG_DIR, 'Minotauro.png')).convert_alpha()
 
     mage_sheet = pygame.image.load(path.join(IMG_DIR, 'Mago_Parado32bit.png')).convert_alpha()
 
@@ -119,6 +122,9 @@ def load_assets():
     # ----- Sons
     music_path = path.join(SND_DIR, 'Musica-Epica.mp3')
     assets[MUSICA_INICIAL] = music_path
+
+    music_path = path.join(SND_DIR, 'Musica-Midgame.mp3')
+    assets[MUSICA_MIDGAME] = music_path
 
     # O arquivo veio com nome quebrado em algumas copias do zip; tentamos achar a variante correta.
     sound_path = _load_optional_sound(SND_DIR, 'Rudgio Le*.ogg')

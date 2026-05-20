@@ -20,6 +20,36 @@ def _shrink_rect(rect, scale_x, scale_y):
     )
 
 
+def _player_collision_rect(player):
+    return pygame.Rect(int(player.x) - 18, int(player.y) - 34, 36, 68)
+
+
+def _enemy_collision_rect(enemy):
+    if isinstance(enemy, Minotauro):
+        return _shrink_rect(enemy.rect(), 0.26, 0.30)
+    return _shrink_rect(enemy.rect(), 0.45, 0.45)
+
+
+def _separate_characters(first, second, first_rect, second_rect, move_first=True, move_second=True):
+    if not first_rect.colliderect(second_rect):
+        return
+
+    overlap_x = min(first_rect.right - second_rect.left, second_rect.right - first_rect.left)
+    overlap_y = min(first_rect.bottom - second_rect.top, second_rect.bottom - first_rect.top)
+    first_share = 0.5 if move_first and move_second else 1 if move_first else 0
+    second_share = 0.5 if move_first and move_second else 1 if move_second else 0
+
+    if overlap_x < overlap_y:
+        direction = -1 if first_rect.centerx <= second_rect.centerx else 1
+        push = (overlap_x + 1) * direction
+        first.x += push * first_share
+        second.x -= push * second_share
+    else:
+        direction = -1 if first_rect.centery <= second_rect.centery else 1
+        push = (overlap_y + 1) * direction
+        first.y += push * first_share
+        second.y -= push * second_share
+
 
 def _spawn_enemy(map_width, map_height, assets, player_x, player_y):
     enemy_type = random.choice(['esqueleto', 'lobisomem', 'mago'])
@@ -61,7 +91,18 @@ def _spawn_enemy(map_width, map_height, assets, player_x, player_y):
         return Esqueleto(x, y, assets)
     else:
         return Lobisomem(x, y, assets)
-    
+
+
+def _spawn_boss(map_width, map_height, assets):
+    angle = random.uniform(0, 6.28318)
+    distance = random.randint(360, 520)
+    x = map_width // 2 + int(distance * pygame.math.Vector2(1, 0).rotate_rad(angle).x)
+    y = map_height // 2 + int(distance * pygame.math.Vector2(1, 0).rotate_rad(angle).y)
+    x = max(120, min(x, map_width - 120))
+    y = max(120, min(y, map_height - 120))
+    return Minotauro(x, y, assets)
+
+
 def posiciona_arma(player, player_center_x, player_center_y, weapon_img):
     # Cada entrada: (offset_x, offset_y, rotacao)
     config = {
@@ -121,6 +162,9 @@ def posiciona_arma(player, player_center_x, player_center_y, weapon_img):
 
 
 def game_screen(screen, assets):
+    pygame.mixer.music.load(assets[MUSICA_MIDGAME])
+    pygame.mixer.music.set_volume(1.0)
+    pygame.mixer.music.play(-1)
     clock = pygame.time.Clock()
     background_arena = assets[ARENA_COLISEU]
     map_width = background_arena.get_width()
@@ -137,10 +181,28 @@ def game_screen(screen, assets):
         WeaponPickup(map_width // 2 + 40, map_height // 2 + 220, assets[WEAPON_CAJADO], 'Cajado', price=20),
     ]
 
-    TARGET_ENEMIES = 4
+    BASE_WAVE_SIZE = 6
+    MAX_WAVE_SIZE = 20
+    WAVE_FIRST_GROWTH_MS = 90_000
+    WAVE_GROWTH_INTERVAL_MS = 30_000
+    WAVE_GROWTH_AMOUNT = 2
+    MAX_SPAWN_BATCH = 3
+    SPAWN_INTERVAL_MS = 1_500
+    FAST_SPAWN_START_MS = 150_000
+    FAST_SPAWN_INTERVAL_MS = 500
+    BOSS_SPAWN_DELAY_AFTER_MAX_WAVE_MS = 30_000
+    max_wave_reached_ms = (
+        WAVE_FIRST_GROWTH_MS
+        + ((MAX_WAVE_SIZE - BASE_WAVE_SIZE) // WAVE_GROWTH_AMOUNT - 1) * WAVE_GROWTH_INTERVAL_MS
+    )
+    game_start_ms = pygame.time.get_ticks()
+    next_spawn_ms = game_start_ms + SPAWN_INTERVAL_MS
+    boss_spawned = False
+
+    initial_enemy_count = min(MAX_SPAWN_BATCH, BASE_WAVE_SIZE)
     enemies = [
         _spawn_enemy(map_width, map_height, assets, player.x, player.y)
-        for _ in range(TARGET_ENEMIES)
+        for _ in range(initial_enemy_count)
     ]
     spells = []
 
@@ -157,12 +219,44 @@ def game_screen(screen, assets):
     CONTACT_DAMAGE_COOLDOWN_MS = 450
     MONSTER_DAMAGE_COOLDOWN_MS = 2000
 
+    def current_wave_size(now):
+        elapsed = now - game_start_ms
+        if elapsed < WAVE_FIRST_GROWTH_MS:
+            return BASE_WAVE_SIZE
+
+        growth_steps = 1 + (elapsed - WAVE_FIRST_GROWTH_MS) // WAVE_GROWTH_INTERVAL_MS
+        return min(MAX_WAVE_SIZE, BASE_WAVE_SIZE + growth_steps * WAVE_GROWTH_AMOUNT)
+
+    def current_spawn_interval(now):
+        if now - game_start_ms >= FAST_SPAWN_START_MS:
+            return FAST_SPAWN_INTERVAL_MS
+        return SPAWN_INTERVAL_MS
+
+    def normal_enemy_count():
+        return sum(1 for enemy in enemies if not isinstance(enemy, Minotauro))
+
     def maintain_enemy_count():
-        while len(enemies) < TARGET_ENEMIES:
+        nonlocal next_spawn_ms, boss_spawned
+
+        now = pygame.time.get_ticks()
+        target_enemies = current_wave_size(now)
+        boss_spawn_ms = game_start_ms + max_wave_reached_ms + BOSS_SPAWN_DELAY_AFTER_MAX_WAVE_MS
+        if not boss_spawned and now >= boss_spawn_ms:
+            enemies.append(_spawn_boss(map_width, map_height, assets))
+            boss_spawned = True
+
+        missing_enemies = target_enemies - normal_enemy_count()
+        if missing_enemies <= 0 or now < next_spawn_ms:
+            return
+
+        spawn_count = min(missing_enemies, random.randint(1, MAX_SPAWN_BATCH))
+        for _ in range(spawn_count):
             enemies.append(_spawn_enemy(map_width, map_height, assets, player.x, player.y))
 
+        next_spawn_ms = now + current_spawn_interval(now)
+
     def kill_enemy(enemy):
-        death_sound = SFX_MONSTER_DEATH if enemy.kind == 'lobisomem' else SFX_ENEMY_DEATH
+        death_sound = SFX_MONSTER_DEATH if enemy.kind in ('lobisomem', ENEMY_MINOTAURO) else SFX_ENEMY_DEATH
         death_channel = pygame.mixer.find_channel(True)
         if death_channel:
             death_channel.play(assets[death_sound])
@@ -171,6 +265,8 @@ def game_screen(screen, assets):
         player.coins += enemy.coins_reward
         enemies.remove(enemy)
         contact_damage_cooldowns.pop(id(enemy), None)
+        if enemy.kind == ENEMY_MINOTAURO:
+            return f'Chefão Minotauro derrotado! +{enemy.coins_reward} moedas'
         return f'+{enemy.coins_reward} moedas'
 
     while running:
@@ -214,7 +310,7 @@ def game_screen(screen, assets):
         # vcameray = max(0, min(vcameray, map_height - ALTURA_TELA))
 
         # Equipar arma ao tocar nela.
-        player_rect = pygame.Rect(player.x - 18, player.y - 34, 36, 68)
+        player_rect = _player_collision_rect(player)
         remaining_pickups = []
         pickup_em_cima = None
 
@@ -271,7 +367,7 @@ def game_screen(screen, assets):
 
             # Dano por contato com o player.
             player_contact_rect = _shrink_rect(player_rect, 0.75, 0.70)
-            enemy_contact_rect = _shrink_rect(enemy_rect, 0.45, 0.45)
+            enemy_contact_rect = _enemy_collision_rect(enemy)
 
             if enemy_contact_rect.colliderect(player_contact_rect):
                 now = pygame.time.get_ticks()
@@ -288,6 +384,33 @@ def game_screen(screen, assets):
                     state = INIT
                     running = False
                     break
+
+            _separate_characters(
+                player,
+                enemy,
+                player_contact_rect,
+                enemy_contact_rect,
+                move_second=not isinstance(enemy, (Mago, Minotauro)),
+            )
+            player.keep_inside_arena()
+            if player.attacking:
+                player.update_attack_box()
+            player_rect = _player_collision_rect(player)
+
+        for i, enemy in enumerate(enemies):
+            for other in enemies[i + 1:]:
+                _separate_characters(
+                    enemy,
+                    other,
+                    _enemy_collision_rect(enemy),
+                    _enemy_collision_rect(other),
+                    move_first=not isinstance(enemy, Mago),
+                    move_second=not isinstance(other, Mago),
+                )
+
+        player_rect = _player_collision_rect(player)
+        vcamerax = player.x - LARGURA_TELA // 2
+        vcameray = player.y - ALTURA_TELA // 2
 
         maintain_enemy_count()
 
@@ -312,7 +435,7 @@ def game_screen(screen, assets):
             frame = enemy.get_current_frame()
             if enemy.hit_flash > pygame.time.get_ticks() > 0:
                 tint = frame.copy()
-                tint.fill((200, 150, 150), special_flags=pygame.BLEND_RGBA_MULT)
+                tint.fill((255, 70, 70), special_flags=pygame.BLEND_RGBA_MULT)
                 frame = tint
             screen.blit(frame, (enemy.x - vcamerax - frame.get_width() // 2, enemy.y - vcameray - frame.get_height() // 2))
 
@@ -323,7 +446,7 @@ def game_screen(screen, assets):
         player_frame = player.get_current_frame()
         if player.hit_flash > pygame.time.get_ticks() > 0:
             tint = player_frame.copy()
-            tint.fill((200, 150, 150), special_flags=pygame.BLEND_RGBA_MULT)
+            tint.fill((255, 70, 70), special_flags=pygame.BLEND_RGBA_MULT)
             player_frame = tint
         largura_boneco = player_frame.get_width()
         altura_boneco = player_frame.get_height()
