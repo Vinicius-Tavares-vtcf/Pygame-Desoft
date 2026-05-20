@@ -20,6 +20,34 @@ def _shrink_rect(rect, scale_x, scale_y):
     )
 
 
+def _player_collision_rect(player):
+    return pygame.Rect(int(player.x) - 18, int(player.y) - 34, 36, 68)
+
+
+def _enemy_collision_rect(enemy):
+    return _shrink_rect(enemy.rect(), 0.45, 0.45)
+
+
+def _separate_characters(first, second, first_rect, second_rect, move_first=True, move_second=True):
+    if not first_rect.colliderect(second_rect):
+        return
+
+    overlap_x = min(first_rect.right - second_rect.left, second_rect.right - first_rect.left)
+    overlap_y = min(first_rect.bottom - second_rect.top, second_rect.bottom - first_rect.top)
+    first_share = 0.5 if move_first and move_second else 1 if move_first else 0
+    second_share = 0.5 if move_first and move_second else 1 if move_second else 0
+
+    if overlap_x < overlap_y:
+        direction = -1 if first_rect.centerx <= second_rect.centerx else 1
+        push = (overlap_x + 1) * direction
+        first.x += push * first_share
+        second.x -= push * second_share
+    else:
+        direction = -1 if first_rect.centery <= second_rect.centery else 1
+        push = (overlap_y + 1) * direction
+        first.y += push * first_share
+        second.y -= push * second_share
+
 
 def _spawn_enemy(map_width, map_height, assets, player_x, player_y):
     enemy_type = random.choice(['esqueleto', 'lobisomem', 'mago'])
@@ -214,7 +242,7 @@ def game_screen(screen, assets):
         # vcameray = max(0, min(vcameray, map_height - ALTURA_TELA))
 
         # Equipar arma ao tocar nela.
-        player_rect = pygame.Rect(player.x - 18, player.y - 34, 36, 68)
+        player_rect = _player_collision_rect(player)
         remaining_pickups = []
         pickup_em_cima = None
 
@@ -271,7 +299,7 @@ def game_screen(screen, assets):
 
             # Dano por contato com o player.
             player_contact_rect = _shrink_rect(player_rect, 0.75, 0.70)
-            enemy_contact_rect = _shrink_rect(enemy_rect, 0.45, 0.45)
+            enemy_contact_rect = _enemy_collision_rect(enemy)
 
             if enemy_contact_rect.colliderect(player_contact_rect):
                 now = pygame.time.get_ticks()
@@ -288,6 +316,32 @@ def game_screen(screen, assets):
                     state = INIT
                     running = False
                     break
+
+            _separate_characters(
+                player,
+                enemy,
+                player_contact_rect,
+                enemy_contact_rect,
+                move_second=not isinstance(enemy, Mago),
+            )
+            if player.attacking:
+                player.update_attack_box()
+            player_rect = _player_collision_rect(player)
+
+        for i, enemy in enumerate(enemies):
+            for other in enemies[i + 1:]:
+                _separate_characters(
+                    enemy,
+                    other,
+                    _enemy_collision_rect(enemy),
+                    _enemy_collision_rect(other),
+                    move_first=not isinstance(enemy, Mago),
+                    move_second=not isinstance(other, Mago),
+                )
+
+        player_rect = _player_collision_rect(player)
+        vcamerax = player.x - LARGURA_TELA // 2
+        vcameray = player.y - ALTURA_TELA // 2
 
         maintain_enemy_count()
 
@@ -312,7 +366,7 @@ def game_screen(screen, assets):
             frame = enemy.get_current_frame()
             if enemy.hit_flash > pygame.time.get_ticks() > 0:
                 tint = frame.copy()
-                tint.fill((200, 150, 150), special_flags=pygame.BLEND_RGBA_MULT)
+                tint.fill((255, 70, 70), special_flags=pygame.BLEND_RGBA_MULT)
                 frame = tint
             screen.blit(frame, (enemy.x - vcamerax - frame.get_width() // 2, enemy.y - vcameray - frame.get_height() // 2))
 
@@ -323,7 +377,7 @@ def game_screen(screen, assets):
         player_frame = player.get_current_frame()
         if player.hit_flash > pygame.time.get_ticks() > 0:
             tint = player_frame.copy()
-            tint.fill((200, 150, 150), special_flags=pygame.BLEND_RGBA_MULT)
+            tint.fill((255, 70, 70), special_flags=pygame.BLEND_RGBA_MULT)
             player_frame = tint
         largura_boneco = player_frame.get_width()
         altura_boneco = player_frame.get_height()
