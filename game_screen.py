@@ -149,6 +149,9 @@ def posiciona_arma(player, player_center_x, player_center_y, weapon_img):
 
 
 def game_screen(screen, assets):
+    pygame.mixer.music.load(assets[MUSICA_MIDGAME])
+    pygame.mixer.music.set_volume(1.0)
+    pygame.mixer.music.play(-1)
     clock = pygame.time.Clock()
     background_arena = assets[ARENA_COLISEU]
     map_width = background_arena.get_width()

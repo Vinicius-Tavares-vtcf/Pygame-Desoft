@@ -11,6 +11,7 @@ TXT_BATALHAR = 'txt_batalhar'
 HOVER_BATALHAR = 'hover_batalhar'
 TXT_SAIR = 'txt_sair'
 MUSICA_INICIAL = 'musica_inicial'
+MUSICA_MIDGAME = 'musica_midgame'
 HOVER_SAIR = 'hover_sair'
 ARENA_COLISEU = 'Arena_Coliseu'
 
@@ -119,6 +120,9 @@ def load_assets():
     # ----- Sons
     music_path = path.join(SND_DIR, 'Musica-Epica.mp3')
     assets[MUSICA_INICIAL] = music_path
+
+    music_path = path.join(SND_DIR, 'Musica-Midgame.mp3')
+    assets[MUSICA_MIDGAME] = music_path
 
     # O arquivo veio com nome quebrado em algumas copias do zip; tentamos achar a variante correta.
     sound_path = _load_optional_sound(SND_DIR, 'Rudgio Le*.ogg')

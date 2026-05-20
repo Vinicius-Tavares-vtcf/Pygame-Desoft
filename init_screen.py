@@ -27,14 +27,14 @@ def init_screen(screen, assets):
     txt_hover_sair = assets[HOVER_SAIR]
 
     pygame.mixer.music.load(assets[MUSICA_INICIAL])
-    pygame.mixer.music.set_volume(0.3)
+    pygame.mixer.music.set_volume(1.0) # tava 0.3
     pygame.mixer.music.play(-1)
 
     som_path = assets.get(VIDEO_INICIAL)
     som_video = None
     if som_path:
         som_video = pygame.mixer.Sound(som_path)
-        som_video.set_volume(0.6)
+        som_video.set_volume(1.0) #0.6
         som_video.play(-1)
 
     running = True
