@@ -190,15 +190,19 @@ def game_screen(screen, assets):
     SPAWN_INTERVAL_MS = 1_500
     FAST_SPAWN_START_MS = 150_000
     FAST_SPAWN_INTERVAL_MS = 500
+    BOSS_SPAWN_DELAY_AFTER_MAX_WAVE_MS = 30_000
+    max_wave_reached_ms = (
+        WAVE_FIRST_GROWTH_MS
+        + ((MAX_WAVE_SIZE - BASE_WAVE_SIZE) // WAVE_GROWTH_AMOUNT - 1) * WAVE_GROWTH_INTERVAL_MS
+    )
     game_start_ms = pygame.time.get_ticks()
     next_spawn_ms = game_start_ms + SPAWN_INTERVAL_MS
+    boss_spawned = False
 
     initial_enemy_count = min(MAX_SPAWN_BATCH, BASE_WAVE_SIZE)
     enemies = [
-        _spawn_boss(map_width, map_height, assets)
-    ] + [
         _spawn_enemy(map_width, map_height, assets, player.x, player.y)
-        for _ in range(initial_enemy_count - 1)
+        for _ in range(initial_enemy_count)
     ]
     spells = []
 
@@ -228,12 +232,20 @@ def game_screen(screen, assets):
             return FAST_SPAWN_INTERVAL_MS
         return SPAWN_INTERVAL_MS
 
+    def normal_enemy_count():
+        return sum(1 for enemy in enemies if not isinstance(enemy, Minotauro))
+
     def maintain_enemy_count():
-        nonlocal next_spawn_ms
+        nonlocal next_spawn_ms, boss_spawned
 
         now = pygame.time.get_ticks()
         target_enemies = current_wave_size(now)
-        missing_enemies = target_enemies - len(enemies)
+        boss_spawn_ms = game_start_ms + max_wave_reached_ms + BOSS_SPAWN_DELAY_AFTER_MAX_WAVE_MS
+        if not boss_spawned and now >= boss_spawn_ms:
+            enemies.append(_spawn_boss(map_width, map_height, assets))
+            boss_spawned = True
+
+        missing_enemies = target_enemies - normal_enemy_count()
         if missing_enemies <= 0 or now < next_spawn_ms:
             return
 
