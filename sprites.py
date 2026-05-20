@@ -202,6 +202,24 @@ class Player:
         elif d == 'down_left':
             self.attack_box = pygame.Rect(self.x - s,  self.y + 10, s, s)
 
+    def keep_inside_arena(self):
+        center_x = self.mapwidth // 2
+        center_y = self.mapheight // 2
+        arena_radius = 785
+        arena_top = center_y - 625
+
+        if self.y < arena_top:
+            self.y = arena_top
+
+        dx = self.x - center_x
+        dy = self.y - center_y
+        distance = math.hypot(dx, dy)
+
+        if distance > arena_radius and distance > 0:
+            scale = arena_radius / distance
+            self.x = center_x + dx * scale
+            self.y = center_y + dy * scale
+
     def update(self): #Atualiza o movimento, a direção, a animação e o ataque.
         now = pygame.time.get_ticks()
         self.old_x = self.x
@@ -215,6 +233,7 @@ class Player:
         if distancia_centro > 785 or (self.y - self.mapheight // 2) < -625:
             self.x = self.old_x
             self.y = self.old_y
+            self.keep_inside_arena()
 
         moving = (self.dx != 0 or self.dy != 0)
 
@@ -386,8 +405,11 @@ class Minotauro:
     DAMAGE = 5
     COINS_RANGE = (6, 12)
     SPEED_RANGE = (1, 2)
-    SCALE = 1.15
+    SCALE = 4.0
     FRAME_SPEED = 0.10
+    FRAME_COLUMNS = 24
+    FRAME_ROWS = 8
+    STOP_DISTANCE = 120
 
     def __init__(self, x, y, assets):
         self.kind = self.KIND
@@ -395,19 +417,21 @@ class Minotauro:
         self.y = float(y)
         self.sheet = assets[self.KIND]
 
-        frame_w = self.sheet.get_width() // 64
-        frame_h = self.sheet.get_height() // 64
-        frames = cortar_spritesheet(self.sheet, frame_w, frame_h)
+        frame_w = self.sheet.get_width() // self.FRAME_COLUMNS
+        frame_h = self.sheet.get_height() // self.FRAME_ROWS
+        frames = cortar_spritesheet(self.sheet, frame_w, frame_h, max_colunas=self.FRAME_COLUMNS)
         frames = [[_trim_frame(frame) for frame in row] for row in frames]
 
-        directions = ['down', 'left', 'right', 'up', 'up_left', 'up_right', 'down_right', 'down_left']
-        self.animacoes = {}
-        for index, direction in enumerate(directions):
-            start_row = index * 3
-            end_row = start_row + 3
-            rows = frames[start_row:end_row]
-            flat_frames = [frame for row in rows for frame in row]
-            self.animacoes[direction] = _scale_frames(flat_frames, self.SCALE)
+        self.animacoes = {
+            'down':       _scale_frames(frames[6], self.SCALE),
+            'left':       _scale_frames(frames[0], self.SCALE),
+            'right':      _scale_frames(frames[4], self.SCALE),
+            'up':         _scale_frames(frames[2], self.SCALE),
+            'up_left':    _scale_frames(frames[1], self.SCALE),
+            'up_right':   _scale_frames(frames[3], self.SCALE),
+            'down_right': _scale_frames(frames[5], self.SCALE),
+            'down_left':  _scale_frames(frames[7], self.SCALE),
+        }
 
         self.direction = 'down'
         self.frame_timer = 0
@@ -437,7 +461,7 @@ class Minotauro:
         dy = player.y - self.y
         dist = math.hypot(dx, dy)
 
-        if dist > 0:
+        if dist > self.STOP_DISTANCE:
             step = self.speed
             self.x += step * dx / dist
             self.y += step * dy / dist
@@ -454,6 +478,8 @@ class Minotauro:
                 self.direction = 'down' if dy > 0 else 'up'
 
             self.frame_timer += self.FRAME_SPEED
+        else:
+            self.frame_timer = 0
 
         if self.hit_flash > 0 and now >= self.hit_flash:
             self.hit_flash = 0

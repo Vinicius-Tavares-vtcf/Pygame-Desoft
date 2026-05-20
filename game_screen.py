@@ -25,6 +25,8 @@ def _player_collision_rect(player):
 
 
 def _enemy_collision_rect(enemy):
+    if isinstance(enemy, Minotauro):
+        return _shrink_rect(enemy.rect(), 0.26, 0.30)
     return _shrink_rect(enemy.rect(), 0.45, 0.45)
 
 
@@ -179,12 +181,24 @@ def game_screen(screen, assets):
         WeaponPickup(map_width // 2 + 40, map_height // 2 + 220, assets[WEAPON_CAJADO], 'Cajado', price=20),
     ]
 
-    TARGET_ENEMIES = 4
+    BASE_WAVE_SIZE = 6
+    MAX_WAVE_SIZE = 20
+    WAVE_FIRST_GROWTH_MS = 90_000
+    WAVE_GROWTH_INTERVAL_MS = 30_000
+    WAVE_GROWTH_AMOUNT = 2
+    MAX_SPAWN_BATCH = 3
+    SPAWN_INTERVAL_MS = 1_500
+    FAST_SPAWN_START_MS = 150_000
+    FAST_SPAWN_INTERVAL_MS = 500
+    game_start_ms = pygame.time.get_ticks()
+    next_spawn_ms = game_start_ms + SPAWN_INTERVAL_MS
+
+    initial_enemy_count = min(MAX_SPAWN_BATCH, BASE_WAVE_SIZE)
     enemies = [
         _spawn_boss(map_width, map_height, assets)
     ] + [
         _spawn_enemy(map_width, map_height, assets, player.x, player.y)
-        for _ in range(TARGET_ENEMIES - 1)
+        for _ in range(initial_enemy_count - 1)
     ]
     spells = []
 
@@ -201,9 +215,33 @@ def game_screen(screen, assets):
     CONTACT_DAMAGE_COOLDOWN_MS = 450
     MONSTER_DAMAGE_COOLDOWN_MS = 2000
 
+    def current_wave_size(now):
+        elapsed = now - game_start_ms
+        if elapsed < WAVE_FIRST_GROWTH_MS:
+            return BASE_WAVE_SIZE
+
+        growth_steps = 1 + (elapsed - WAVE_FIRST_GROWTH_MS) // WAVE_GROWTH_INTERVAL_MS
+        return min(MAX_WAVE_SIZE, BASE_WAVE_SIZE + growth_steps * WAVE_GROWTH_AMOUNT)
+
+    def current_spawn_interval(now):
+        if now - game_start_ms >= FAST_SPAWN_START_MS:
+            return FAST_SPAWN_INTERVAL_MS
+        return SPAWN_INTERVAL_MS
+
     def maintain_enemy_count():
-        while len(enemies) < TARGET_ENEMIES:
+        nonlocal next_spawn_ms
+
+        now = pygame.time.get_ticks()
+        target_enemies = current_wave_size(now)
+        missing_enemies = target_enemies - len(enemies)
+        if missing_enemies <= 0 or now < next_spawn_ms:
+            return
+
+        spawn_count = min(missing_enemies, random.randint(1, MAX_SPAWN_BATCH))
+        for _ in range(spawn_count):
             enemies.append(_spawn_enemy(map_width, map_height, assets, player.x, player.y))
+
+        next_spawn_ms = now + current_spawn_interval(now)
 
     def kill_enemy(enemy):
         death_sound = SFX_MONSTER_DEATH if enemy.kind in ('lobisomem', ENEMY_MINOTAURO) else SFX_ENEMY_DEATH
@@ -340,8 +378,9 @@ def game_screen(screen, assets):
                 enemy,
                 player_contact_rect,
                 enemy_contact_rect,
-                move_second=not isinstance(enemy, Mago),
+                move_second=not isinstance(enemy, (Mago, Minotauro)),
             )
+            player.keep_inside_arena()
             if player.attacking:
                 player.update_attack_box()
             player_rect = _player_collision_rect(player)
