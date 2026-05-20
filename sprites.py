@@ -40,6 +40,14 @@ def cortar_spritesheet(sheet, frame_w, frame_h, max_colunas=None):
 
     return animacoes
 
+
+def _trim_frame(frame):
+    rect = frame.get_bounding_rect()
+    if rect.width == 0 or rect.height == 0:
+        return frame
+    return frame.subsurface(rect).copy()
+
+
 def pegar_frame(sheet, linha, coluna, grid=32):
     frame_w = sheet.get_width() // grid
     frame_h = sheet.get_height() // grid
@@ -366,6 +374,96 @@ class Lobisomem(Enemy):
 
     def __init__(self, x, y, assets):
         super().__init__(x, y, assets)
+
+
+class Minotauro:
+    KIND = ENEMY_MINOTAURO
+    HITS_TO_DIE_BY_WEAPON = {
+        'Punhos': 9,
+        'Cajado': 6,
+        'Espada': 4,
+    }
+    DAMAGE = 5
+    COINS_RANGE = (6, 12)
+    SPEED_RANGE = (1, 2)
+    SCALE = 1.15
+    FRAME_SPEED = 0.10
+
+    def __init__(self, x, y, assets):
+        self.kind = self.KIND
+        self.x = float(x)
+        self.y = float(y)
+        self.sheet = assets[self.KIND]
+
+        frame_w = self.sheet.get_width() // 64
+        frame_h = self.sheet.get_height() // 64
+        frames = cortar_spritesheet(self.sheet, frame_w, frame_h)
+        frames = [[_trim_frame(frame) for frame in row] for row in frames]
+
+        directions = ['down', 'left', 'right', 'up', 'up_left', 'up_right', 'down_right', 'down_left']
+        self.animacoes = {}
+        for index, direction in enumerate(directions):
+            start_row = index * 3
+            end_row = start_row + 3
+            rows = frames[start_row:end_row]
+            flat_frames = [frame for row in rows for frame in row]
+            self.animacoes[direction] = _scale_frames(flat_frames, self.SCALE)
+
+        self.direction = 'down'
+        self.frame_timer = 0
+        self.max_health = 12
+        self.health = self.max_health
+        self.hits_taken = 0
+        self.damage = self.DAMAGE
+        self.coins_reward = random.randint(*self.COINS_RANGE)
+        self.hit_flash = 0
+        self.speed = random.randint(*self.SPEED_RANGE)
+
+    def rect(self):
+        frame = self.get_current_frame()
+        return frame.get_rect(center=(int(self.x), int(self.y)))
+
+    def get_current_frame(self):
+        frame = self.animacoes[self.direction][int(self.frame_timer) % len(self.animacoes[self.direction])]
+        if self.hit_flash > 0 and pygame.time.get_ticks() < self.hit_flash:
+            tint = frame.copy()
+            tint.fill((255, 70, 70), special_flags=pygame.BLEND_RGBA_MULT)
+            return tint
+        return frame
+
+    def update(self, player):
+        now = pygame.time.get_ticks()
+        dx = player.x - self.x
+        dy = player.y - self.y
+        dist = math.hypot(dx, dy)
+
+        if dist > 0:
+            step = self.speed
+            self.x += step * dx / dist
+            self.y += step * dy / dist
+
+            maior = max(abs(dx), abs(dy))
+            if maior > 0 and min(abs(dx), abs(dy)) / maior > 0.4:
+                if   dx > 0 and dy < 0: self.direction = 'up_right'
+                elif dx < 0 and dy < 0: self.direction = 'up_left'
+                elif dx > 0 and dy > 0: self.direction = 'down_right'
+                else:                   self.direction = 'down_left'
+            elif abs(dx) > abs(dy):
+                self.direction = 'right' if dx > 0 else 'left'
+            else:
+                self.direction = 'down' if dy > 0 else 'up'
+
+            self.frame_timer += self.FRAME_SPEED
+
+        if self.hit_flash > 0 and now >= self.hit_flash:
+            self.hit_flash = 0
+
+    def take_damage(self, damage, weapon_name=None):
+        self.hits_taken += 1
+        hits_to_die = self.HITS_TO_DIE_BY_WEAPON.get(weapon_name, self.HITS_TO_DIE_BY_WEAPON['Punhos'])
+        self.health = max(0, hits_to_die - self.hits_taken)
+        self.hit_flash = pygame.time.get_ticks() + 160
+        return self.hits_taken >= hits_to_die
 
 
 class Mago:

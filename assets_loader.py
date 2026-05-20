@@ -21,6 +21,7 @@ WEAPON_CAJADO = 'weapon_cajado'
 ENEMY_ESQUELETO = 'esqueleto'
 ENEMY_LOBISOMEM = 'lobisomem'
 ENEMY_MAGO = 'mago'
+ENEMY_MINOTAURO = 'minotauro'
 
 SFX_SWORD = 'sfx_sword'
 SFX_HIT = 'sfx_hit'
@@ -67,6 +68,7 @@ def load_assets():
     assets['player_sheet'] = pygame.image.load(path.join(IMG_DIR, 'Personagem32bit.png')).convert_alpha()
     assets[ENEMY_ESQUELETO] = pygame.image.load(path.join(IMG_DIR, 'Esqueleto32bit.png')).convert_alpha()
     assets[ENEMY_LOBISOMEM] = pygame.image.load(path.join(IMG_DIR, 'Lobisomem32bit.png')).convert_alpha()
+    assets[ENEMY_MINOTAURO] = pygame.image.load(path.join(IMG_DIR, 'Minotauro.png')).convert_alpha()
 
     mage_sheet = pygame.image.load(path.join(IMG_DIR, 'Mago_Parado32bit.png')).convert_alpha()
 

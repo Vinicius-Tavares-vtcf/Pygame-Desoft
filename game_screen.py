@@ -89,7 +89,18 @@ def _spawn_enemy(map_width, map_height, assets, player_x, player_y):
         return Esqueleto(x, y, assets)
     else:
         return Lobisomem(x, y, assets)
-    
+
+
+def _spawn_boss(map_width, map_height, assets):
+    angle = random.uniform(0, 6.28318)
+    distance = random.randint(360, 520)
+    x = map_width // 2 + int(distance * pygame.math.Vector2(1, 0).rotate_rad(angle).x)
+    y = map_height // 2 + int(distance * pygame.math.Vector2(1, 0).rotate_rad(angle).y)
+    x = max(120, min(x, map_width - 120))
+    y = max(120, min(y, map_height - 120))
+    return Minotauro(x, y, assets)
+
+
 def posiciona_arma(player, player_center_x, player_center_y, weapon_img):
     # Cada entrada: (offset_x, offset_y, rotacao)
     config = {
@@ -170,8 +181,10 @@ def game_screen(screen, assets):
 
     TARGET_ENEMIES = 4
     enemies = [
+        _spawn_boss(map_width, map_height, assets)
+    ] + [
         _spawn_enemy(map_width, map_height, assets, player.x, player.y)
-        for _ in range(TARGET_ENEMIES)
+        for _ in range(TARGET_ENEMIES - 1)
     ]
     spells = []
 
@@ -193,7 +206,7 @@ def game_screen(screen, assets):
             enemies.append(_spawn_enemy(map_width, map_height, assets, player.x, player.y))
 
     def kill_enemy(enemy):
-        death_sound = SFX_MONSTER_DEATH if enemy.kind == 'lobisomem' else SFX_ENEMY_DEATH
+        death_sound = SFX_MONSTER_DEATH if enemy.kind in ('lobisomem', ENEMY_MINOTAURO) else SFX_ENEMY_DEATH
         death_channel = pygame.mixer.find_channel(True)
         if death_channel:
             death_channel.play(assets[death_sound])
@@ -202,6 +215,8 @@ def game_screen(screen, assets):
         player.coins += enemy.coins_reward
         enemies.remove(enemy)
         contact_damage_cooldowns.pop(id(enemy), None)
+        if enemy.kind == ENEMY_MINOTAURO:
+            return f'Chefão Minotauro derrotado! +{enemy.coins_reward} moedas'
         return f'+{enemy.coins_reward} moedas'
 
     while running:
