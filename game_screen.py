@@ -67,11 +67,11 @@ def posiciona_arma(player, player_center_x, player_center_y, weapon_img):
     config = {
         'Espada': {
             'parado': {
-                'right':      ( 15,   3,   -30), 'left':      ( 2, -32,  90), 'up':      ( 40, -15,  45), 'down':      (-20,  12, -90),
+                'right':      ( 15,   13,   -30), 'left':      ( 2, -32,  90), 'up':      ( 40, -15,  45), 'down':      (-20,  12, -90),
                 'up_right':   ( 38,   5,   0), 'up_left':   ( 18 , -18,  90), 'down_right': ( -18, 17 , -90), 'down_left': (-24,  -4,  180),
             },
             'atacando': {
-                'right':      ( 30, 6,   -30), 'left':      (-30, -10, 120), 'up':      (  0, -50,  45), 'down':      ( -2,  45, -90),
+                'right':      ( 38, 6,   -30), 'left':      (-30, -10, 120), 'up':      (  0, -50,  45), 'down':      ( -2,  45, -90),
                 'up_right':   ( 47, -35,   0), 'up_left':   (-25, -10, 90), 'down_right': ( 38,  34, -85), 'down_left': (-42,  25,  180),
             },
         },
@@ -356,7 +356,15 @@ def game_screen(screen, assets):
             player_center_y = cy + player_frame.get_height() // 2
 
             weapon_img, weapon_rect = posiciona_arma(player, player_center_x, player_center_y, weapon_img)
+            if player.direction in ['right','down_right','down']:
+                screen.blit(player_frame, (cx, cy))
+            
             screen.blit(weapon_img, weapon_rect.topleft)
+
+            if player.direction not in ['right','down_right','down']:
+                screen.blit(player_frame, (cx, cy))
+        else:
+            screen.blit(player_frame, (cx, cy))
 
         # HUD
         hud = pygame.Surface((460, 155), pygame.SRCALPHA)
@@ -366,7 +374,6 @@ def game_screen(screen, assets):
         _draw_text(screen, font_mid, f'Moedas: {player.coins}', 30, 62)
         _draw_text(screen, font_small, f'Arma: {player.weapon}', 30, 100)
         _draw_text(screen, font_small, 'Mover: WASD | Atacar: J ou ESPACO', 30, 128)
-        screen.blit(player_frame, (cx, cy))
 
         if message_timer > pygame.time.get_ticks():
             msg = font_mid.render(message, True, (255, 240, 120))
