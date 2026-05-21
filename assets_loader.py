@@ -67,7 +67,7 @@ def load_assets():
 
     assets['player_sheet'] = pygame.image.load(path.join(IMG_DIR, 'PersonagemRomano32bit.png')).convert_alpha()
     assets[ENEMY_ESQUELETO] = pygame.image.load(path.join(IMG_DIR, 'Esqueleto32bit.png')).convert_alpha()
-    assets[ENEMY_LOBISOMEM] = pygame.image.load(path.join(IMG_DIR, 'Lobisomem32bit.png')).convert_alpha()
+    assets[ENEMY_LOBISOMEM] = pygame.image.load(path.join(IMG_DIR, 'Leão32bit.png')).convert_alpha()
     assets[ENEMY_MINOTAURO] = pygame.image.load(path.join(IMG_DIR, 'Minotauro.png')).convert_alpha()
 
     mage_sheet = pygame.image.load(path.join(IMG_DIR, 'Mago_Parado32bit.png')).convert_alpha()
