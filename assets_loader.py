@@ -14,6 +14,7 @@ MUSICA_INICIAL = 'musica_inicial'
 MUSICA_MIDGAME = 'musica_midgame'
 HOVER_SAIR = 'hover_sair'
 ARENA_COLISEU = 'Arena_Coliseu'
+MEDKIT = 'medkit'
 
 WEAPON_ESPADA = 'weapon_espada'
 WEAPON_ARCO = 'weapon_arco'
@@ -70,6 +71,15 @@ def load_assets():
     assets[ENEMY_LOBISOMEM] = pygame.image.load(path.join(IMG_DIR, 'Leão32bit.png')).convert_alpha()
     assets[ENEMY_MINOTAURO] = pygame.image.load(path.join(IMG_DIR, 'Minotauro.png')).convert_alpha()
 
+    medkit_sheet = pygame.image.load(
+        path.join(IMG_DIR, 'medkit.png')
+    ).convert_alpha()
+
+    assets[MEDKIT] = pygame.transform.scale(
+        medkit_sheet,
+        (136, 136)
+    )
+    
     mage_sheet = pygame.image.load(path.join(IMG_DIR, 'Mago_Parado32bit.png')).convert_alpha()
 
     w = mage_sheet.get_width() // 2

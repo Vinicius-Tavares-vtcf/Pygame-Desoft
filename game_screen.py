@@ -24,6 +24,35 @@ def _player_collision_rect(player):
     return pygame.Rect(int(player.x) - 18, int(player.y) - 34, 36, 68)
 
 
+def _tint_sprite_pixels(frame, tint_color):
+    tinted = frame.copy()
+    background_colors = {
+        tinted.get_at((0, 0))[:3],
+        tinted.get_at((tinted.get_width() - 1, 0))[:3],
+        tinted.get_at((0, tinted.get_height() - 1))[:3],
+        tinted.get_at((tinted.get_width() - 1, tinted.get_height() - 1))[:3],
+    }
+
+    tinted.lock()
+    for x in range(tinted.get_width()):
+        for y in range(tinted.get_height()):
+            pixel = tinted.get_at((x, y))
+            if pixel.a == 0 or pixel[:3] in background_colors:
+                continue
+            tinted.set_at((
+                x,
+                y
+            ), (
+                pixel.r * tint_color[0] // 255,
+                pixel.g * tint_color[1] // 255,
+                pixel.b * tint_color[2] // 255,
+                pixel.a,
+            ))
+    tinted.unlock()
+
+    return tinted
+
+
 def _enemy_collision_rect(enemy):
     if isinstance(enemy, Minotauro):
         return _shrink_rect(enemy.rect(), 0.26, 0.30)
@@ -171,6 +200,12 @@ def game_screen(screen, assets):
     map_height = background_arena.get_height()
 
     player = Player(map_width, map_height, assets)
+
+    # Caixa de Cura
+    heal_price = 30
+    heal_amount = 50
+    heal_image = assets[MEDKIT]
+    heal_rect = heal_image.get_rect(center=(map_width // 2 + 590, map_height // 2 - 430))
 
     font_small = pygame.font.SysFont('arial', 24, bold=True)
     font_mid = pygame.font.SysFont('arial', 32, bold=True)
@@ -334,6 +369,23 @@ def game_screen(screen, assets):
 
         weapon_pickups = remaining_pickups
 
+        if player_rect.colliderect(heal_rect):
+            shop_message = f'{heal_price} moedas | Aperte K para curar'
+            shop_message_timer = pygame.time.get_ticks() + 200
+
+            if buy_requested:
+                if player.health >= player.max_health:
+                    message = 'Vida cheia!'
+                    message_timer = pygame.time.get_ticks() + 1200
+                elif player.coins >= heal_price:
+                    player.coins -= heal_price
+                    player.health = min(player.max_health, player.health + heal_amount)
+                    message = f'+{heal_amount} VIDA'
+                    message_timer = pygame.time.get_ticks() + 1200
+                else:
+                    message = 'Moedas insuficientes!'
+                    message_timer = pygame.time.get_ticks() + 1200
+
         # Atualiza inimigos.
         for enemy in enemies[:]:
             enemy.update(player)
@@ -426,6 +478,13 @@ def game_screen(screen, assets):
         # Desenho
         screen.fill((0, 0, 0))
         screen.blit(background_arena, (-vcamerax, -vcameray))
+
+        # Desenha caixa de cura
+        screen.blit(
+            heal_image,
+            (heal_rect.x - vcamerax, heal_rect.y - vcameray)
+        )
+
         for pickup in weapon_pickups:
             show_hint = player_rect.colliderect(pickup.rect)
             pickup.draw(screen, vcamerax, vcameray, show_hint=show_hint)
@@ -445,9 +504,7 @@ def game_screen(screen, assets):
 
         player_frame = player.get_current_frame()
         if player.hit_flash > pygame.time.get_ticks() > 0:
-            tint = player_frame.copy()
-            tint.fill((255, 70, 70), special_flags=pygame.BLEND_RGBA_MULT)
-            player_frame = tint
+            player_frame = _tint_sprite_pixels(player_frame, (255, 70, 70))
         largura_boneco = player_frame.get_width()
         altura_boneco = player_frame.get_height()
         # player_frame = pygame.transform.smoothscale(player_frame, (int(largura_boneco * 1.25), int(altura_boneco * 1.25)))
