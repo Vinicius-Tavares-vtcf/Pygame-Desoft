@@ -67,12 +67,16 @@ def pegar_frame(sheet, linha, coluna, grid=32):
     return frame
 
 
-def _scale_frames(frames, scale_factor):
+def _scale_frames(frames, scale_factor, smooth=True):
     scaled = []
     for frame in frames:
         w, h = frame.get_size()
         if scale_factor != 1:
-            frame = pygame.transform.smoothscale(frame, (max(1, int(w * scale_factor)), max(1, int(h * scale_factor))))
+            size = (max(1, int(w * scale_factor)), max(1, int(h * scale_factor)))
+            if smooth:
+                frame = pygame.transform.smoothscale(frame, size)
+            else:
+                frame = pygame.transform.scale(frame, size)
         scaled.append(frame)
     return scaled
 
@@ -150,9 +154,9 @@ class Player:
         self.weapon_image = self.weapon_images.get(weapon_name)'''
     def equip(self, weapon_name, weapon_sheet=None):
         weapons = {
-            'Espada': {'damage': 4, 'range': 90},
+            'Espada': {'damage': 4, 'range': 66},
             'Arco': {'damage': 2, 'range': 140},
-            'Cajado': {'damage': 3, 'range': 66},
+            'Cajado': {'damage': 3, 'range': 80},
             'Punhos': {'damage': 1, 'range': 48},
         }
 
@@ -375,7 +379,7 @@ class Esqueleto(Enemy):
         'Cajado': 1,
         'Espada': 1,
     }
-    DAMAGE = 1
+    DAMAGE = 2
 
     def __init__(self, x, y, assets):
         super().__init__(x, y, assets)
@@ -389,7 +393,7 @@ class Lobisomem(Enemy):
         'Cajado': 3,
         'Espada': 2,
     }
-    DAMAGE = 3
+    DAMAGE = 5
 
     def __init__(self, x, y, assets):
         super().__init__(x, y, assets)
@@ -398,11 +402,11 @@ class Lobisomem(Enemy):
 class Minotauro:
     KIND = ENEMY_MINOTAURO
     HITS_TO_DIE_BY_WEAPON = {
-        'Punhos': 9,
-        'Cajado': 6,
-        'Espada': 4,
+        'Punhos': 60,
+        'Cajado': 30,
+        'Espada': 20,
     }
-    DAMAGE = 5
+    DAMAGE = 20
     COINS_RANGE = (6, 12)
     SPEED_RANGE = (1, 2)
     SCALE = 4.0
@@ -423,14 +427,14 @@ class Minotauro:
         frames = [[_trim_frame(frame) for frame in row] for row in frames]
 
         self.animacoes = {
-            'down':       _scale_frames(frames[6], self.SCALE),
-            'left':       _scale_frames(frames[0], self.SCALE),
-            'right':      _scale_frames(frames[4], self.SCALE),
-            'up':         _scale_frames(frames[2], self.SCALE),
-            'up_left':    _scale_frames(frames[1], self.SCALE),
-            'up_right':   _scale_frames(frames[3], self.SCALE),
-            'down_right': _scale_frames(frames[5], self.SCALE),
-            'down_left':  _scale_frames(frames[7], self.SCALE),
+            'down':       _scale_frames(frames[6], self.SCALE, smooth=False),
+            'left':       _scale_frames(frames[0], self.SCALE, smooth=False),
+            'right':      _scale_frames(frames[4], self.SCALE, smooth=False),
+            'up':         _scale_frames(frames[2], self.SCALE, smooth=False),
+            'up_left':    _scale_frames(frames[1], self.SCALE, smooth=False),
+            'up_right':   _scale_frames(frames[3], self.SCALE, smooth=False),
+            'down_right': _scale_frames(frames[5], self.SCALE, smooth=False),
+            'down_left':  _scale_frames(frames[7], self.SCALE, smooth=False),
         }
 
         self.direction = 'down'
@@ -518,7 +522,7 @@ class Mago:
         )
 
         self.last_cast_ms = 0
-        self.cast_cooldown_ms = 1800
+        self.cast_cooldown_ms = 2300
 
     def rect(self):
         return self.static_image.get_rect(center=(int(self.x), int(self.y)))
