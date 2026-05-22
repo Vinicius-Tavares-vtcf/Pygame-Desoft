@@ -202,7 +202,7 @@ def game_screen(screen, assets):
     player = Player(map_width, map_height, assets)
 
     # Caixa de Cura
-    heal_price = 30
+    heal_price = 25
     heal_amount = 50
     heal_image = assets[MEDKIT]
     heal_rect = heal_image.get_rect(center=(map_width // 2 + 590, map_height // 2 - 430))
@@ -211,21 +211,24 @@ def game_screen(screen, assets):
     font_mid = pygame.font.SysFont('arial', 32, bold=True)
 
     weapon_pickups = [
-        WeaponPickup(map_width // 2 - 180, map_height // 2 + 130, assets[WEAPON_ESPADA], 'Espada', price=50),
+        WeaponPickup(map_width // 2 - 180, map_height // 2 + 130, assets[WEAPON_ESPADA], 'Espada', price=40),
         WeaponPickup(map_width // 2 + 220, map_height // 2 - 120, assets[WEAPON_ARCO], 'Arco', price=10),
-        WeaponPickup(map_width // 2 + 40, map_height // 2 + 220, assets[WEAPON_CAJADO], 'Cajado', price=20),
+        WeaponPickup(map_width // 2 + 40, map_height // 2 + 220, assets[WEAPON_CAJADO], 'Cajado', price=15),
     ]
 
     BASE_WAVE_SIZE = 6
     MAX_WAVE_SIZE = 20
-    WAVE_FIRST_GROWTH_MS = 90_000
-    WAVE_GROWTH_INTERVAL_MS = 30_000
+    WAVE_FIRST_GROWTH_MS = 45_000
+    WAVE_GROWTH_INTERVAL_MS = 20_000
     WAVE_GROWTH_AMOUNT = 2
     MAX_SPAWN_BATCH = 3
     SPAWN_INTERVAL_MS = 1_500
     FAST_SPAWN_START_MS = 150_000
     FAST_SPAWN_INTERVAL_MS = 500
-    BOSS_SPAWN_DELAY_AFTER_MAX_WAVE_MS = 30_000
+    BOSS_SPAWN_DELAY_AFTER_MAX_WAVE_MS = 15_000
+    POST_BOSS_RESUME_DELAY_MS = 10_000
+    POST_BOSS_BASE_WAVE_SIZE = 20
+    POST_BOSS_GROWTH_INTERVAL_MS = 10_000
     max_wave_reached_ms = (
         WAVE_FIRST_GROWTH_MS
         + ((MAX_WAVE_SIZE - BASE_WAVE_SIZE) // WAVE_GROWTH_AMOUNT - 1) * WAVE_GROWTH_INTERVAL_MS
@@ -233,6 +236,7 @@ def game_screen(screen, assets):
     game_start_ms = pygame.time.get_ticks()
     next_spawn_ms = game_start_ms + SPAWN_INTERVAL_MS
     boss_spawned = False
+    boss_defeated_ms = None
 
     initial_enemy_count = min(MAX_SPAWN_BATCH, BASE_WAVE_SIZE)
     enemies = [
@@ -251,10 +255,19 @@ def game_screen(screen, assets):
     shop_message_timer = 0
     contact_damage_cooldowns = {}
     attack_hit_enemies = set()
-    CONTACT_DAMAGE_COOLDOWN_MS = 450
-    MONSTER_DAMAGE_COOLDOWN_MS = 2000
+    CONTACT_DAMAGE_COOLDOWN_MS = 300
+    LOBISOMEM_DAMAGE_COOLDOWN_MS = 1500
+    MINOTAURO_DAMAGE_COOLDOWN_MS = 3000
 
     def current_wave_size(now):
+        if boss_defeated_ms is not None:
+            resume_ms = boss_defeated_ms + POST_BOSS_RESUME_DELAY_MS
+            if now < resume_ms:
+                return 0
+
+            growth_steps = (now - resume_ms) // POST_BOSS_GROWTH_INTERVAL_MS
+            return POST_BOSS_BASE_WAVE_SIZE + growth_steps * WAVE_GROWTH_AMOUNT
+
         elapsed = now - game_start_ms
         if elapsed < WAVE_FIRST_GROWTH_MS:
             return BASE_WAVE_SIZE
@@ -270,16 +283,23 @@ def game_screen(screen, assets):
     def normal_enemy_count():
         return sum(1 for enemy in enemies if not isinstance(enemy, Minotauro))
 
+    def boss_alive():
+        return any(isinstance(enemy, Minotauro) for enemy in enemies)
+
     def maintain_enemy_count():
         nonlocal next_spawn_ms, boss_spawned
 
         now = pygame.time.get_ticks()
-        target_enemies = current_wave_size(now)
         boss_spawn_ms = game_start_ms + max_wave_reached_ms + BOSS_SPAWN_DELAY_AFTER_MAX_WAVE_MS
         if not boss_spawned and now >= boss_spawn_ms:
             enemies.append(_spawn_boss(map_width, map_height, assets))
             boss_spawned = True
+            return
 
+        if boss_alive():
+            return
+
+        target_enemies = current_wave_size(now)
         missing_enemies = target_enemies - normal_enemy_count()
         if missing_enemies <= 0 or now < next_spawn_ms:
             return
@@ -291,7 +311,17 @@ def game_screen(screen, assets):
         next_spawn_ms = now + current_spawn_interval(now)
 
     def kill_enemy(enemy):
-        death_sound = SFX_MONSTER_DEATH if enemy.kind in ('lobisomem', ENEMY_MINOTAURO) else SFX_ENEMY_DEATH
+        nonlocal boss_defeated_ms, next_spawn_ms
+
+        if enemy.kind == 'mago':
+            death_sound = SFX_MAGE_DEATH
+        elif enemy.kind == ENEMY_MINOTAURO:
+            death_sound = SFX_MINOTAUR_DEATH
+        elif enemy.kind == 'lobisomem':
+            death_sound = SFX_MONSTER_DEATH
+        else:
+            death_sound = SFX_ENEMY_DEATH
+
         death_channel = pygame.mixer.find_channel(True)
         if death_channel:
             death_channel.play(assets[death_sound])
@@ -301,6 +331,8 @@ def game_screen(screen, assets):
         enemies.remove(enemy)
         contact_damage_cooldowns.pop(id(enemy), None)
         if enemy.kind == ENEMY_MINOTAURO:
+            boss_defeated_ms = pygame.time.get_ticks()
+            next_spawn_ms = boss_defeated_ms + POST_BOSS_RESUME_DELAY_MS
             return f'Chefão Minotauro derrotado! +{enemy.coins_reward} moedas'
         return f'+{enemy.coins_reward} moedas'
 
@@ -423,12 +455,22 @@ def game_screen(screen, assets):
 
             if enemy_contact_rect.colliderect(player_contact_rect):
                 now = pygame.time.get_ticks()
-                contact_cooldown = MONSTER_DAMAGE_COOLDOWN_MS if enemy.kind == 'lobisomem' else CONTACT_DAMAGE_COOLDOWN_MS
+                if enemy.kind == ENEMY_MINOTAURO:
+                    contact_cooldown = MINOTAURO_DAMAGE_COOLDOWN_MS
+                elif enemy.kind == 'lobisomem':
+                    contact_cooldown = LOBISOMEM_DAMAGE_COOLDOWN_MS
+                else:
+                    contact_cooldown = CONTACT_DAMAGE_COOLDOWN_MS
                 last_contact_damage = contact_damage_cooldowns.get(enemy_key, -contact_cooldown)
 
                 if enemy.damage > 0 and now - last_contact_damage >= contact_cooldown:
                     player.take_damage(enemy.damage)
-                    damage_sound = SFX_MONSTER_BITE if enemy.kind == 'lobisomem' else SFX_HIT
+                    if enemy.kind == ENEMY_MINOTAURO:
+                        damage_sound = SFX_MINOTAUR_ATTACK
+                    elif enemy.kind == 'lobisomem':
+                        damage_sound = SFX_MONSTER_BITE
+                    else:
+                        damage_sound = SFX_HIT
                     assets[damage_sound].play()
                     contact_damage_cooldowns[enemy_key] = now
 
