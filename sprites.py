@@ -92,7 +92,7 @@ class Player:
         frame_h = self.sheet.get_height() // 8
         frames = cortar_spritesheet(self.sheet, frame_w, frame_h)
 
-        scale_factor = 1.10 
+        scale_factor = 1.1
 
         self.animacoes = {
             'down':       _scale_frames(frames[6][:4], scale_factor),

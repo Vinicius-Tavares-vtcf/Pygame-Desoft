@@ -1,5 +1,5 @@
 # ===== Inicialização =====
-# ----- Importa e inicia pacotes
+# ----- Importa e inicia pacotesas
 import pygame
 import random
 from config import *
