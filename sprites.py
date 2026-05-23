@@ -102,7 +102,7 @@ class Player:
             'down':       _scale_frames(frames[6][:4], scale_factor),
             'left':       _scale_frames(frames[0][:4], scale_factor),
             'right':      _scale_frames(frames[4][:4], scale_factor),
-            'up':         _scale_frames(frames[2][:4], scale_factor),
+            'up':         _scale_frames(frames[1][:4], scale_factor),
             'up_left':    _scale_frames(frames[1][:4], scale_factor),
             'up_right':   _scale_frames(frames[3][:4], scale_factor),
             'down_right': _scale_frames(frames[5][:4], scale_factor),
@@ -113,7 +113,7 @@ class Player:
             'down':       frames[6],
             'left':       frames[0],
             'right':      frames[4],
-            'up':         frames[2],
+            'up':         frames[1],
             'up_left':    frames[1],
             'up_right':   frames[3],
             'down_right': frames[5],
@@ -324,6 +324,9 @@ class Enemy:
     COINS_RANGE = (1, 3)
     SCALE = 1.1
     FRAME_SPEED = 0.12
+    ATTACK_RANGE = 150
+    ATTACK_COOLDOWN_MS = 400
+    ATTACK_DURATION_MS = 300
 
     def __init__(self, x, y, assets):
         self.kind = self.KIND
@@ -344,6 +347,17 @@ class Enemy:
             'down_left':  _scale_frames(frames[7][:4], self.SCALE),
         }
 
+        self.attack_frames = {
+            'down':       _scale_frames(frames[6], self.SCALE),
+            'left':       _scale_frames(frames[0], self.SCALE),
+            'right':      _scale_frames(frames[4], self.SCALE),
+            'up':         _scale_frames(frames[2], self.SCALE),
+            'up_left':    _scale_frames(frames[1], self.SCALE),
+            'up_right':   _scale_frames(frames[3], self.SCALE),
+            'down_right': _scale_frames(frames[5], self.SCALE),
+            'down_left':  _scale_frames(frames[7], self.SCALE),
+        }
+
         self.direction = 'down'
         self.frame_timer = 0
         self.x = float(x)
@@ -355,14 +369,33 @@ class Enemy:
         self.damage = self.DAMAGE
         self.coins_reward = random.randint(*self.COINS_RANGE)
         self.hit_flash = 0
+        self.attacking = False
+        self.attack_direction = 'down'
+        self.last_attack_ms = 0
+        self.attack_start_ms = 0
 
     def rect(self):
         frame = self.get_current_frame()
         return frame.get_rect(center=(int(self.x), int(self.y)))
 
+    def can_attack(self):
+        return pygame.time.get_ticks() - self.last_attack_ms >= self.ATTACK_COOLDOWN_MS
+
+    def start_attack(self, direction):
+        now = pygame.time.get_ticks()
+        self.last_attack_ms = now
+        self.attack_start_ms = now
+        self.attacking = True
+        self.attack_direction = direction
+
     def get_current_frame(self):
-        frames = self.animacoes[self.direction]
-        return frames[int(self.frame_timer) % len(frames)]
+        if self.attacking:
+            frames = self.attack_frames[self.attack_direction]
+            frame_index = 4
+        else:
+            frames = self.animacoes[self.direction]
+            frame_index = int(self.frame_timer) % len(frames)
+        return frames[frame_index]
 
     def update(self, player):
         now = pygame.time.get_ticks()
@@ -370,11 +403,10 @@ class Enemy:
         dy = player.y - self.y
         dist = math.hypot(dx, dy)
 
-        if dist > 0:
-            step = self.speed
-            self.x += step * dx / dist
-            self.y += step * dy / dist
+        if self.attacking and now - self.attack_start_ms > self.ATTACK_DURATION_MS:
+            self.attacking = False
 
+        if dist > 0:
             maior = max(abs(dx), abs(dy))
             if maior > 0 and min(abs(dx), abs(dy)) / maior > 0.4:
                 if   dx > 0 and dy < 0: self.direction = 'up_right'
@@ -386,7 +418,14 @@ class Enemy:
             else:
                 self.direction = 'down' if dy > 0 else 'up'
 
-            self.frame_timer += self.FRAME_SPEED
+            if dist <= self.ATTACK_RANGE and self.can_attack():
+                self.start_attack(self.direction)
+
+            if not self.attacking:
+                step = self.speed
+                self.x += step * dx / dist
+                self.y += step * dy / dist
+                self.frame_timer += self.FRAME_SPEED
 
         if self.hit_flash > 0 and now >= self.hit_flash:
             self.hit_flash = 0
@@ -408,6 +447,9 @@ class Esqueleto(Enemy):
         'Espada': 1,
     }
     DAMAGE = 2
+    ATTACK_RANGE = 120
+    ATTACK_COOLDOWN_MS = 300
+    ATTACK_DURATION_MS = 250
 
     def __init__(self, x, y, assets):
         super().__init__(x, y, assets)
@@ -422,6 +464,9 @@ class Lobisomem(Enemy):
         'Espada': 2,
     }
     DAMAGE = 5
+    ATTACK_RANGE = 150
+    ATTACK_COOLDOWN_MS = 1500
+    ATTACK_DURATION_MS = 500
 
     def __init__(self, x, y, assets):
         super().__init__(x, y, assets)
@@ -442,6 +487,8 @@ class Minotauro:
     FRAME_COLUMNS = 24
     FRAME_ROWS = 8
     STOP_DISTANCE = 120
+    ATTACK_COOLDOWN_MS = 2000
+    ATTACK_DURATION_MS = 900
 
     def __init__(self, x, y, assets):
         self.kind = self.KIND
@@ -455,14 +502,25 @@ class Minotauro:
         frames = [[_trim_frame(frame) for frame in row] for row in frames]
 
         self.animacoes = {
-            'down':       _scale_frames(frames[6], self.SCALE, smooth=False),
-            'left':       _scale_frames(frames[0], self.SCALE, smooth=False),
-            'right':      _scale_frames(frames[4], self.SCALE, smooth=False),
-            'up':         _scale_frames(frames[2], self.SCALE, smooth=False),
-            'up_left':    _scale_frames(frames[1], self.SCALE, smooth=False),
-            'up_right':   _scale_frames(frames[3], self.SCALE, smooth=False),
-            'down_right': _scale_frames(frames[5], self.SCALE, smooth=False),
-            'down_left':  _scale_frames(frames[7], self.SCALE, smooth=False),
+            'down':       _scale_frames(frames[6][:12], self.SCALE, smooth=False),
+            'left':       _scale_frames(frames[0][:12], self.SCALE, smooth=False),
+            'right':      _scale_frames(frames[4][:12], self.SCALE, smooth=False),
+            'up':         _scale_frames(frames[2][:12], self.SCALE, smooth=False),
+            'up_left':    _scale_frames(frames[1][:12], self.SCALE, smooth=False),
+            'up_right':   _scale_frames(frames[3][:12], self.SCALE, smooth=False),
+            'down_right': _scale_frames(frames[5][:12], self.SCALE, smooth=False),
+            'down_left':  _scale_frames(frames[7][:12], self.SCALE, smooth=False),
+        }
+
+        self.attack_frames = {
+            'down':       _scale_frames(frames[6][12:16], self.SCALE, smooth=False),
+            'left':       _scale_frames(frames[0][12:16], self.SCALE, smooth=False),
+            'right':      _scale_frames(frames[4][12:16], self.SCALE, smooth=False),
+            'up':         _scale_frames(frames[2][12:16], self.SCALE, smooth=False),
+            'up_left':    _scale_frames(frames[1][12:16], self.SCALE, smooth=False),
+            'up_right':   _scale_frames(frames[3][12:16], self.SCALE, smooth=False),
+            'down_right': _scale_frames(frames[5][12:16], self.SCALE, smooth=False),
+            'down_left':  _scale_frames(frames[7][12:16], self.SCALE, smooth=False),
         }
 
         self.direction = 'down'
@@ -474,13 +532,34 @@ class Minotauro:
         self.coins_reward = random.randint(*self.COINS_RANGE)
         self.hit_flash = 0
         self.speed = random.randint(*self.SPEED_RANGE)
+        self.attacking = False
+        self.attack_direction = 'down'
+        self.last_attack_ms = 0
+        self.attack_start_ms = 0
 
     def rect(self):
         frame = self.get_current_frame()
         return frame.get_rect(center=(int(self.x), int(self.y)))
 
+    def can_attack(self):
+        return pygame.time.get_ticks() - self.last_attack_ms >= self.ATTACK_COOLDOWN_MS
+
+    def start_attack(self, direction):
+        now = pygame.time.get_ticks()
+        self.last_attack_ms = now
+        self.attack_start_ms = now
+        self.attacking = True
+        self.attack_direction = direction
+
     def get_current_frame(self):
-        frame = self.animacoes[self.direction][int(self.frame_timer) % len(self.animacoes[self.direction])]
+        if self.attacking:
+            frames = self.attack_frames[self.attack_direction]
+            elapsed = pygame.time.get_ticks() - self.attack_start_ms
+            frac = min(elapsed / max(self.ATTACK_DURATION_MS, 1), 1.0)
+            frame_index = min(int(frac * len(frames)), len(frames) - 1)
+            frame = frames[frame_index]
+        else:
+            frame = self.animacoes[self.direction][int(self.frame_timer) % len(self.animacoes[self.direction])]
         if self.hit_flash > 0 and pygame.time.get_ticks() < self.hit_flash:
             tint = frame.copy()
             tint.fill((255, 70, 70), special_flags=pygame.BLEND_RGBA_MULT)
@@ -493,24 +572,28 @@ class Minotauro:
         dy = player.y - self.y
         dist = math.hypot(dx, dy)
 
+        if self.attacking and now - self.attack_start_ms > self.ATTACK_DURATION_MS:
+            self.attacking = False
+
+        maior = max(abs(dx), abs(dy))
+        if maior > 0 and min(abs(dx), abs(dy)) / maior > 0.4:
+            if   dx > 0 and dy < 0: self.direction = 'up_right'
+            elif dx < 0 and dy < 0: self.direction = 'up_left'
+            elif dx > 0 and dy > 0: self.direction = 'down_right'
+            else:                   self.direction = 'down_left'
+        elif abs(dx) > abs(dy):
+            self.direction = 'right' if dx > 0 else 'left'
+        else:
+            self.direction = 'down' if dy > 0 else 'up'
+
         if dist > self.STOP_DISTANCE:
             step = self.speed
             self.x += step * dx / dist
             self.y += step * dy / dist
-
-            maior = max(abs(dx), abs(dy))
-            if maior > 0 and min(abs(dx), abs(dy)) / maior > 0.4:
-                if   dx > 0 and dy < 0: self.direction = 'up_right'
-                elif dx < 0 and dy < 0: self.direction = 'up_left'
-                elif dx > 0 and dy > 0: self.direction = 'down_right'
-                else:                   self.direction = 'down_left'
-            elif abs(dx) > abs(dy):
-                self.direction = 'right' if dx > 0 else 'left'
-            else:
-                self.direction = 'down' if dy > 0 else 'up'
-
             self.frame_timer += self.FRAME_SPEED
         else:
+            if self.can_attack():
+                self.start_attack(self.direction)
             self.frame_timer = 0
 
         if self.hit_flash > 0 and now >= self.hit_flash:

@@ -11,8 +11,6 @@ from game_screen import *
 ctypes.windll.user32.SetProcessDPIAware()
 pygame.init()
 pygame.mixer.init()
-pygame.mixer.set_num_channels(16)
-
 # ----- Gera tela principal
 window = pygame.display.set_mode((LARGURA_TELA, ALTURA_TELA))
 pygame.display.set_caption('O Coliseu')
