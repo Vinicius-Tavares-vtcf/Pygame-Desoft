@@ -5,7 +5,7 @@ from assets_loader import *
 from sprites import *
 
 spells = []
-
+arrows = []
 def _draw_text(screen, font, text, x, y, color=(255, 255, 255)):
     surf = font.render(text, True, color)
     screen.blit(surf, (x, y))
@@ -359,15 +359,33 @@ def game_screen(screen, assets):
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 mouse_pos = pygame.mouse.get_pos()
                 center_screen = (LARGURA_TELA // 2, ALTURA_TELA // 2)
-                attack_dir = player.direction_from_mouse(mouse_pos, center_screen)
 
-                if player.start_attack(attack_dir):
-                    attack_hit_enemies.clear()
-                    if player.weapon == 'Espada':
-                        assets[SFX_SWORD].play()
-                    message = 'Ataque!'
+                if player.weapon == 'Arco':
+                    target_x = player.x + (mouse_pos[0] - center_screen[0])
+                    target_y = player.y + (mouse_pos[1] - center_screen[1])
+
+                    arrows.append(
+                        Arrow(
+                            player.x,
+                            player.y,
+                            target_x,
+                            target_y,
+                            assets['arrow'],
+                            speed=18,
+                            damage=player.weapon_damage
+                        )
+                    )
+
+                    message = 'Flecha lançada!'
                     message_timer = pygame.time.get_ticks() + 400
-
+                else:
+                    attack_dir = player.direction_from_mouse(mouse_pos, center_screen)
+                    if player.start_attack(attack_dir):
+                        attack_hit_enemies.clear()
+                        if player.weapon == 'Espada':
+                            assets[SFX_SWORD].play()
+                        message = 'Ataque!'
+                        message_timer = pygame.time.get_ticks() + 400
         keys = pygame.key.get_pressed()
         player.dx = 0
         player.dy = 0
@@ -448,7 +466,7 @@ def game_screen(screen, assets):
 
             enemy_rect = enemy.rect()
             enemy_key = id(enemy)
-            if player.attacking and enemy_key not in attack_hit_enemies and player.attack_box.colliderect(enemy_rect):
+            if player.weapon != 'Arco' and player.attacking and enemy_key not in attack_hit_enemies and player.attack_box.colliderect(enemy_rect):
                 attack_hit_enemies.add(enemy_key)
                 died = enemy.take_damage(player.weapon_damage, player.weapon)
 
@@ -529,6 +547,22 @@ def game_screen(screen, assets):
             if not spell.alive:
                 spells.remove(spell)
 
+        for arrow in arrows[:]:
+            hit_enemy, died = arrow.update(enemies, map_width // 2, map_height // 2, arena_radius=785)
+
+            if hit_enemy:
+                if died:
+                    message = kill_enemy(hit_enemy)
+                    message_timer = pygame.time.get_ticks() + 700
+                    maintain_enemy_count()
+                else:
+                    assets[SFX_HIT].play()
+
+                arrows.remove(arrow)
+            elif not arrow.alive:
+                arrows.remove(arrow)
+
+        
         # Desenho
         screen.fill((0, 0, 0))
         screen.blit(background_arena, (-vcamerax, -vcameray))
@@ -538,6 +572,8 @@ def game_screen(screen, assets):
             heal_image,
             (heal_rect.x - vcamerax, heal_rect.y - vcameray)
         )
+        for arrow in arrows:
+            arrow.draw(screen, vcamerax, vcameray)
 
         for pickup in weapon_pickups:
             show_hint = player_rect.colliderect(pickup.rect)
@@ -555,6 +591,8 @@ def game_screen(screen, assets):
         # DESENHA OS FEITIÇOS AQUI
         for spell in spells:
             spell.draw(screen, vcamerax, vcameray)
+
+        
 
         player_frame = player.get_current_frame()
         if player.hit_flash > pygame.time.get_ticks() > 0:

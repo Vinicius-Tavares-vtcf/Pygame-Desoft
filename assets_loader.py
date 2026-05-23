@@ -75,6 +75,11 @@ def load_assets():
     assets[ENEMY_MINOTAURO] = pygame.image.load(path.join(IMG_DIR, 'Minotauro32bit.png')).convert_alpha()
 
     assets[MEDKIT] = _load_scaled_image(IMG_DIR, 'Totemdecura32bit.png', (280, 280))
+
+    assets['arrow'] = pygame.transform.smoothscale(
+    pygame.image.load(path.join(IMG_DIR, 'Flecha.png')).convert_alpha(),
+    (48, 48)
+)
     
     mage_sheet = pygame.image.load(path.join(IMG_DIR, 'Mago_Parado32bit.png')).convert_alpha()
 

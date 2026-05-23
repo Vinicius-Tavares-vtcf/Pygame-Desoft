@@ -193,6 +193,26 @@ class Player:
         else:
             self.weapon_image = None
 
+    def direction_from_mouse(self, mouse_pos, screen_center):
+        dx = mouse_pos[0] - screen_center[0]
+        dy = mouse_pos[1] - screen_center[1]
+
+        if dx == 0 and dy == 0:
+            return self.direction
+
+        if abs(dx) > abs(dy) * 1.2:
+            return 'right' if dx > 0 else 'left'
+        elif abs(dy) > abs(dx) * 1.2:
+            return 'down' if dy > 0 else 'up'
+        else:
+            if dx > 0 and dy < 0:
+                return 'up_right'
+            elif dx < 0 and dy < 0:
+                return 'up_left'
+            elif dx > 0 and dy > 0:
+                return 'down_right'
+            else:
+                return 'down_left'
     def can_attack(self): # Verifica se já passou tempo suficiente para atacar de novo.
         return pygame.time.get_ticks() - self.last_attack_ms >= self.attack_cooldown_ms
 
@@ -200,16 +220,10 @@ class Player:
         now = pygame.time.get_ticks()
         if not self.can_attack():
             return False
-
         self.last_attack_ms = now
         self.attack_start_ms = now
         self.attacking = True
-
         self.attack_direction = attack_direction if attack_direction else self.direction
-
-        # PLAYER OLHA PARA O ATAQUE
-        self.direction = self.attack_direction
-
         self.update_attack_box()
         return True
 
@@ -743,3 +757,56 @@ class MageSpell:
         img = self.frames[self.frame_index]
         r = self.rect()
         screen.blit(img, (r.x - cam_x, r.y - cam_y))
+
+
+class Arrow:
+    def __init__(self, x, y, target_x, target_y, base_image, speed=18, damage=2):
+        direction = pygame.Vector2(target_x - x, target_y - y)
+        if direction.length_squared() == 0:
+            direction = pygame.Vector2(-1, -1)
+
+        self.dir = direction.normalize()
+        self.speed = speed
+        self.damage = damage
+        self.alive = True
+
+        self.pos = pygame.Vector2(x, y) + self.dir * 34
+
+        target_angle = math.degrees(math.atan2(-self.dir.y, self.dir.x))
+        rotation = target_angle - 135  # porque sua imagem base aponta para up-left
+
+        rotated = pygame.transform.rotate(base_image, rotation)
+        self.image = pygame.transform.scale(rotated, (100,100))
+
+    def rect(self):
+        return self.image.get_rect(center=(int(self.pos.x), int(self.pos.y)))
+
+    def update(self, enemies, arena_center_x, arena_center_y, arena_radius=785):
+        if not self.alive:
+            return None, False
+
+        self.pos += self.dir * self.speed
+
+        if pygame.Vector2(self.pos.x - arena_center_x, self.pos.y - arena_center_y).length() > arena_radius:
+            self.alive = False
+            return None, False
+
+        arrow_rect = self.rect()
+
+        for enemy in enemies:
+            if arrow_rect.colliderect(enemy.rect()):
+                died = enemy.take_damage(self.damage, 'Arco')
+                self.alive = False
+                return enemy, died
+
+        return None, False
+
+    def draw(self, screen, cam_x, cam_y):
+        if not self.alive:
+            return
+        r = self.rect()
+        screen.blit(
+            self.image,
+            (r.centerx - self.image.get_width() // 2 - cam_x,
+             r.centery - self.image.get_height() // 2 - cam_y)
+        )
