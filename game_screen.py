@@ -353,8 +353,20 @@ def game_screen(screen, assets):
                         message = 'Ataque!'
                         message_timer = pygame.time.get_ticks() + 400
                 # Compra da arma
-                if event.key == pygame.K_k:
+                if event.key == pygame.K_e:
                     buy_requested = True
+
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                mouse_pos = pygame.mouse.get_pos()
+                center_screen = (LARGURA_TELA // 2, ALTURA_TELA // 2)
+                attack_dir = player.direction_from_mouse(mouse_pos, center_screen)
+
+                if player.start_attack(attack_dir):
+                    attack_hit_enemies.clear()
+                    if player.weapon == 'Espada':
+                        assets[SFX_SWORD].play()
+                    message = 'Ataque!'
+                    message_timer = pygame.time.get_ticks() + 400
 
         keys = pygame.key.get_pressed()
         player.dx = 0
@@ -383,7 +395,7 @@ def game_screen(screen, assets):
 
         for pickup in weapon_pickups:
             if player_rect.colliderect(pickup.rect):
-                shop_message = f'{pickup.price} moedas | Aperte K para comprar'
+                shop_message = f'{pickup.price} moedas | Aperte E para comprar'
                 shop_message_timer = pygame.time.get_ticks() + 200
 
                 if buy_requested:
@@ -402,7 +414,7 @@ def game_screen(screen, assets):
         weapon_pickups = remaining_pickups
 
         if player_rect.colliderect(heal_rect):
-            shop_message = f'{heal_price} moedas | Aperte K para curar'
+            shop_message = f'{heal_price} moedas | Aperte E para curar'
             shop_message_timer = pygame.time.get_ticks() + 200
 
             if buy_requested:

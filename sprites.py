@@ -152,6 +152,28 @@ class Player:
         self.weapon_damage = weapon['damage']
         self.attack_range = weapon['range']
         self.weapon_image = self.weapon_images.get(weapon_name)'''
+    def direction_from_mouse(self, mouse_pos, screen_center): #Descobre a direção do mouse, dividindo o círculo em 8 fatias.
+        dx = mouse_pos[0] - screen_center[0]
+        dy = mouse_pos[1] - screen_center[1]
+
+        angle = math.degrees(math.atan2(-dy, dx))
+
+        if -22.5 <= angle < 22.5:
+            return 'right'
+        elif 22.5 <= angle < 67.5:
+            return 'up_right'
+        elif 67.5 <= angle < 112.5:
+            return 'up'
+        elif 112.5 <= angle < 157.5:
+            return 'up_left'
+        elif angle >= 157.5 or angle < -157.5:
+            return 'left'
+        elif -157.5 <= angle < -112.5:
+            return 'down_left'
+        elif -112.5 <= angle < -67.5:
+            return 'down'
+        else:
+            return 'down_right'
     def equip(self, weapon_name, weapon_sheet=None):
         weapons = {
             'Espada': {'damage': 4, 'range': 66},
@@ -174,14 +196,20 @@ class Player:
     def can_attack(self): # Verifica se já passou tempo suficiente para atacar de novo.
         return pygame.time.get_ticks() - self.last_attack_ms >= self.attack_cooldown_ms
 
-    def start_attack(self): #Inicia o ataque e marca a direção do golpe.
+    def start_attack(self, attack_direction=None):
         now = pygame.time.get_ticks()
         if not self.can_attack():
             return False
+
         self.last_attack_ms = now
         self.attack_start_ms = now
         self.attacking = True
-        self.attack_direction = self.direction
+
+        self.attack_direction = attack_direction if attack_direction else self.direction
+
+        # PLAYER OLHA PARA O ATAQUE
+        self.direction = self.attack_direction
+
         self.update_attack_box()
         return True
 
@@ -285,7 +313,7 @@ class Player:
 
 class Enemy:
     KIND = ENEMY_ESQUELETO
-    SPEED_RANGE = (2, 4)
+    SPEED_RANGE = (2, 6) #estav 2,4
     HP_RANGE = (2, 4)
     HITS_TO_DIE_BY_WEAPON = {
         'Punhos': 3,
