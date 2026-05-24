@@ -88,7 +88,6 @@ class Player:
         self.mapwidth = map_width
         self.mapheight = map_height
         self.speed = 5
-        self.score = 0
         self.dx = 0
         self.dy = 0
         self.sheet = assets['player_sheet']
@@ -127,6 +126,7 @@ class Player:
         self.health = 100
         self.max_health = 100
         self.coins = 0
+        self.score = 0
         self.weapon = 'Punhos'
         self.weapon_damage = 1
         self.attack_range = 48
@@ -194,26 +194,6 @@ class Player:
         else:
             self.weapon_image = None
 
-    def direction_from_mouse(self, mouse_pos, screen_center):
-        dx = mouse_pos[0] - screen_center[0]
-        dy = mouse_pos[1] - screen_center[1]
-
-        if dx == 0 and dy == 0:
-            return self.direction
-
-        if abs(dx) > abs(dy) * 1.2:
-            return 'right' if dx > 0 else 'left'
-        elif abs(dy) > abs(dx) * 1.2:
-            return 'down' if dy > 0 else 'up'
-        else:
-            if dx > 0 and dy < 0:
-                return 'up_right'
-            elif dx < 0 and dy < 0:
-                return 'up_left'
-            elif dx > 0 and dy > 0:
-                return 'down_right'
-            else:
-                return 'down_left'
     def can_attack(self): # Verifica se já passou tempo suficiente para atacar de novo.
         return pygame.time.get_ticks() - self.last_attack_ms >= self.attack_cooldown_ms
 
@@ -221,10 +201,16 @@ class Player:
         now = pygame.time.get_ticks()
         if not self.can_attack():
             return False
+
         self.last_attack_ms = now
         self.attack_start_ms = now
         self.attacking = True
+
         self.attack_direction = attack_direction if attack_direction else self.direction
+
+        # PLAYER OLHA PARA O ATAQUE
+        self.direction = self.attack_direction
+
         self.update_attack_box()
         return True
 
@@ -470,6 +456,25 @@ class Esqueleto(Enemy):
         super().__init__(x, y, assets)
 
 
+class EsqueletoEvo(Enemy):
+    KIND = ENEMY_ESQUELETO_EVO
+    HP_RANGE = (2, 2)
+    HITS_TO_DIE_BY_WEAPON = {
+        'Punhos': 4,
+        'Cajado': 2,
+        'Espada': 2,
+    }
+    DAMAGE = 4
+    SPEED_RANGE = (4, 7)
+    COINS_RANGE = (2, 4)
+    ATTACK_RANGE = 130
+    ATTACK_COOLDOWN_MS = 220
+    ATTACK_DURATION_MS = 200
+
+    def __init__(self, x, y, assets):
+        super().__init__(x, y, assets)
+
+
 class Lobisomem(Enemy):
     KIND = 'lobisomem'
     HP_RANGE = (5, 5)
@@ -482,6 +487,72 @@ class Lobisomem(Enemy):
     ATTACK_RANGE = 150
     ATTACK_COOLDOWN_MS = 1500
     ATTACK_DURATION_MS = 500
+
+    def __init__(self, x, y, assets):
+        super().__init__(x, y, assets)
+
+
+class LobisomemEvo(Enemy):
+    KIND = ENEMY_LOBISOMEM_EVO
+    HP_RANGE = (8, 8)
+    HITS_TO_DIE_BY_WEAPON = {
+        'Punhos': 9,
+        'Cajado': 5,
+        'Espada': 3,
+    }
+    DAMAGE = 8
+    SPEED_RANGE = (3, 6)
+    COINS_RANGE = (3, 6)
+    ATTACK_RANGE = 160
+    ATTACK_COOLDOWN_MS = 1000
+    ATTACK_DURATION_MS = 500
+
+    _TINT = (255, 100, 65)
+
+    def __init__(self, x, y, assets):
+        super().__init__(x, y, assets)
+        for frames in list(self.animacoes.values()) + list(self.attack_frames.values()):
+            for i, frame in enumerate(frames):
+                tinted = frame.copy()
+                tinted.fill(self._TINT, special_flags=pygame.BLEND_RGBA_MULT)
+                frames[i] = tinted
+
+
+class Leao(Enemy):
+    KIND = ENEMY_LEAO
+    HP_RANGE = (9, 9)
+    HITS_TO_DIE_BY_WEAPON = {
+        'Punhos': 10,
+        'Cajado': 6,
+        'Espada': 4,
+    }
+    DAMAGE = 8
+    SPEED_RANGE = (2, 3)
+    COINS_RANGE = (5, 10)
+    SCALE = 1.8
+    ATTACK_RANGE = 170
+    ATTACK_COOLDOWN_MS = 2000
+    ATTACK_DURATION_MS = 700
+
+    def __init__(self, x, y, assets):
+        super().__init__(x, y, assets)
+
+
+class LeaoEvo(Enemy):
+    KIND = ENEMY_LEAO_EVO
+    HP_RANGE = (14, 14)
+    HITS_TO_DIE_BY_WEAPON = {
+        'Punhos': 16,
+        'Cajado': 10,
+        'Espada': 7,
+    }
+    DAMAGE = 13
+    SPEED_RANGE = (3, 5)
+    COINS_RANGE = (8, 15)
+    SCALE = 1.8
+    ATTACK_RANGE = 180
+    ATTACK_COOLDOWN_MS = 1500
+    ATTACK_DURATION_MS = 700
 
     def __init__(self, x, y, assets):
         super().__init__(x, y, assets)
@@ -501,9 +572,7 @@ class Minotauro:
     FRAME_SPEED = 0.10
     FRAME_COLUMNS = 24
     FRAME_ROWS = 8
-    STOP_DISTANCE = 120
-    ATTACK_COOLDOWN_MS = 2000
-    ATTACK_DURATION_MS = 900
+    STOP_DISTANCE = 40
 
     def __init__(self, x, y, assets):
         self.kind = self.KIND
@@ -527,17 +596,6 @@ class Minotauro:
             'down_left':  _scale_frames(frames[7][:12], self.SCALE, smooth=False),
         }
 
-        self.attack_frames = {
-            'down':       _scale_frames(frames[6][12:16], self.SCALE, smooth=False),
-            'left':       _scale_frames(frames[0][12:16], self.SCALE, smooth=False),
-            'right':      _scale_frames(frames[4][12:16], self.SCALE, smooth=False),
-            'up':         _scale_frames(frames[2][12:16], self.SCALE, smooth=False),
-            'up_left':    _scale_frames(frames[1][12:16], self.SCALE, smooth=False),
-            'up_right':   _scale_frames(frames[3][12:16], self.SCALE, smooth=False),
-            'down_right': _scale_frames(frames[5][12:16], self.SCALE, smooth=False),
-            'down_left':  _scale_frames(frames[7][12:16], self.SCALE, smooth=False),
-        }
-
         self.direction = 'down'
         self.frame_timer = 0
         self.max_health = 12
@@ -547,34 +605,13 @@ class Minotauro:
         self.coins_reward = random.randint(*self.COINS_RANGE)
         self.hit_flash = 0
         self.speed = random.randint(*self.SPEED_RANGE)
-        self.attacking = False
-        self.attack_direction = 'down'
-        self.last_attack_ms = 0
-        self.attack_start_ms = 0
 
     def rect(self):
         frame = self.get_current_frame()
         return frame.get_rect(center=(int(self.x), int(self.y)))
 
-    def can_attack(self):
-        return pygame.time.get_ticks() - self.last_attack_ms >= self.ATTACK_COOLDOWN_MS
-
-    def start_attack(self, direction):
-        now = pygame.time.get_ticks()
-        self.last_attack_ms = now
-        self.attack_start_ms = now
-        self.attacking = True
-        self.attack_direction = direction
-
     def get_current_frame(self):
-        if self.attacking:
-            frames = self.attack_frames[self.attack_direction]
-            elapsed = pygame.time.get_ticks() - self.attack_start_ms
-            frac = min(elapsed / max(self.ATTACK_DURATION_MS, 1), 1.0)
-            frame_index = min(int(frac * len(frames)), len(frames) - 1)
-            frame = frames[frame_index]
-        else:
-            frame = self.animacoes[self.direction][int(self.frame_timer) % len(self.animacoes[self.direction])]
+        frame = self.animacoes[self.direction][int(self.frame_timer) % len(self.animacoes[self.direction])]
         if self.hit_flash > 0 and pygame.time.get_ticks() < self.hit_flash:
             tint = frame.copy()
             tint.fill((255, 70, 70), special_flags=pygame.BLEND_RGBA_MULT)
@@ -587,28 +624,24 @@ class Minotauro:
         dy = player.y - self.y
         dist = math.hypot(dx, dy)
 
-        if self.attacking and now - self.attack_start_ms > self.ATTACK_DURATION_MS:
-            self.attacking = False
-
-        maior = max(abs(dx), abs(dy))
-        if maior > 0 and min(abs(dx), abs(dy)) / maior > 0.4:
-            if   dx > 0 and dy < 0: self.direction = 'up_right'
-            elif dx < 0 and dy < 0: self.direction = 'up_left'
-            elif dx > 0 and dy > 0: self.direction = 'down_right'
-            else:                   self.direction = 'down_left'
-        elif abs(dx) > abs(dy):
-            self.direction = 'right' if dx > 0 else 'left'
-        else:
-            self.direction = 'down' if dy > 0 else 'up'
-
         if dist > self.STOP_DISTANCE:
             step = self.speed
             self.x += step * dx / dist
             self.y += step * dy / dist
+
+            maior = max(abs(dx), abs(dy))
+            if maior > 0 and min(abs(dx), abs(dy)) / maior > 0.4:
+                if   dx > 0 and dy < 0: self.direction = 'up_right'
+                elif dx < 0 and dy < 0: self.direction = 'up_left'
+                elif dx > 0 and dy > 0: self.direction = 'down_right'
+                else:                   self.direction = 'down_left'
+            elif abs(dx) > abs(dy):
+                self.direction = 'right' if dx > 0 else 'left'
+            else:
+                self.direction = 'down' if dy > 0 else 'up'
+
             self.frame_timer += self.FRAME_SPEED
         else:
-            if self.can_attack():
-                self.start_attack(self.direction)
             self.frame_timer = 0
 
         if self.hit_flash > 0 and now >= self.hit_flash:
@@ -688,6 +721,42 @@ class Mago:
 
         return MageSpell(self.x, self.y, end.x, end.y, frames, speed=10, damage=2)
     
+class MagoEvo(Mago):
+    def __init__(self, x, y, assets, side='left'):
+        super().__init__(x, y, assets, side=side)
+        self.kind = ENEMY_MAGO_EVO
+
+        self.health = 7
+        self.max_health = 7
+        self.hits_to_die_by_weapon = {
+            'Punhos': 6,
+            'Cajado': 4,
+            'Espada': 2,
+        }
+        self.coins_reward = random.randint(3, 6)
+        self.cast_cooldown_ms = 1600
+
+        img = assets['mago_evo_left'] if side == 'left' else assets['mago_evo_right']
+        self.static_image = pygame.transform.smoothscale(
+            img,
+            (int(img.get_width() * 0.60), int(img.get_height() * 0.60))
+        )
+
+    def cast_spell(self, assets, arena_center_x, arena_center_y):
+        self.last_cast_ms = pygame.time.get_ticks()
+        start = pygame.Vector2(self.x, self.y)
+        center = pygame.Vector2(arena_center_x, arena_center_y)
+        end = center * 2 - start
+        frames = [
+            assets['fire_spell_1'],
+            assets['fire_spell_2'],
+            assets['fire_spell_3'],
+            assets['fire_spell_4'],
+            assets['fire_spell_5'],
+        ]
+        return MageSpell(self.x, self.y, end.x, end.y, frames, speed=13, damage=4)
+
+
 class WeaponPickup:
     def __init__(self, x, y, image, name, price):
         self.name = name
@@ -719,12 +788,7 @@ class MageSpell:
         self.total_distance = self.direction.length()
         if self.total_distance == 0:
             self.total_distance = 1
-
         self.direction = self.direction.normalize()
-
-        # ângulo do movimento
-        # Se a sua imagem "aponta" para outra direção, ajuste o offset aqui
-        self.angle = math.degrees(math.atan2(-self.direction.y, self.direction.x))
 
         self.traveled = 0.0
         self.frame_index = 0
@@ -738,7 +802,7 @@ class MageSpell:
         self.traveled += self.speed
 
         progress = min(1.0, self.traveled / self.total_distance)
-        self.frame_index = min(len(self.frames) - 1, int(progress * len(self.frames)))
+        self.frame_index = min(4, int(progress * 5))
 
         spell_rect = self.rect()
         player_rect = pygame.Rect(player.x - 18, player.y - 34, 36, 68)
@@ -754,52 +818,50 @@ class MageSpell:
         return False
 
     def rect(self):
-        img = pygame.transform.rotate(self.frames[self.frame_index], self.angle)
+        img = self.frames[self.frame_index]
         return img.get_rect(center=(int(self.pos.x), int(self.pos.y)))
 
     def draw(self, screen, cam_x, cam_y):
         if not self.alive:
             return
-
-        img = pygame.transform.rotate(self.frames[self.frame_index], self.angle)
-        r = img.get_rect(center=(int(self.pos.x), int(self.pos.y)))
+        img = self.frames[self.frame_index]
+        r = self.rect()
         screen.blit(img, (r.x - cam_x, r.y - cam_y))
 
 
 class Arrow:
-    def __init__(self, x, y, target_x, target_y, base_image, speed=18, damage=2):
-        direction = pygame.Vector2(target_x - x, target_y - y)
-        if direction.length_squared() == 0:
-            direction = pygame.Vector2(-1, -1)
-
-        self.dir = direction.normalize()
+    def __init__(self, x, y, target_x, target_y, image, speed=18, damage=1):
+        self.x = float(x)
+        self.y = float(y)
         self.speed = speed
         self.damage = damage
         self.alive = True
 
-        self.pos = pygame.Vector2(x, y) + self.dir * 34
+        dx = target_x - x
+        dy = target_y - y
+        dist = math.hypot(dx, dy)
+        if dist > 0:
+            self.vx = dx / dist * speed
+            self.vy = dy / dist * speed
+        else:
+            self.vx = float(speed)
+            self.vy = 0.0
 
-        target_angle = math.degrees(math.atan2(-self.dir.y, self.dir.x))
-        rotation = target_angle - 135  # porque sua imagem base aponta para up-left
+        angle = -math.degrees(math.atan2(dy, dx))
+        self.image = pygame.transform.rotate(image, angle)
 
-        rotated = pygame.transform.rotate(base_image, rotation)
-        self.image = pygame.transform.scale(rotated, (100,100))
-
-    def rect(self):
-        return self.image.get_rect(center=(int(self.pos.x), int(self.pos.y)))
-
-    def update(self, enemies, arena_center_x, arena_center_y, arena_radius=785):
+    def update(self, enemies, arena_cx, arena_cy, arena_radius=785):
         if not self.alive:
             return None, False
 
-        self.pos += self.dir * self.speed
+        self.x += self.vx
+        self.y += self.vy
 
-        if pygame.Vector2(self.pos.x - arena_center_x, self.pos.y - arena_center_y).length() > arena_radius:
+        if math.hypot(self.x - arena_cx, self.y - arena_cy) > arena_radius:
             self.alive = False
             return None, False
 
-        arrow_rect = self.rect()
-
+        arrow_rect = self.image.get_rect(center=(int(self.x), int(self.y)))
         for enemy in enemies:
             if arrow_rect.colliderect(enemy.rect()):
                 died = enemy.take_damage(self.damage, 'Arco')
@@ -809,11 +871,5 @@ class Arrow:
         return None, False
 
     def draw(self, screen, cam_x, cam_y):
-        if not self.alive:
-            return
-        r = self.rect()
-        screen.blit(
-            self.image,
-            (r.centerx - self.image.get_width() // 2 - cam_x,
-             r.centery - self.image.get_height() // 2 - cam_y)
-        )
+        r = self.image.get_rect(center=(int(self.x) - cam_x, int(self.y) - cam_y))
+        screen.blit(self.image, r)

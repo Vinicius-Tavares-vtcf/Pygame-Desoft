@@ -1,5 +1,7 @@
 import random
 import pygame
+import cv2
+from os import path
 from config import *
 from assets_loader import *
 from sprites import *
@@ -80,10 +82,41 @@ def _separate_characters(first, second, first_rect, second_rect, move_first=True
         second.y -= push * second_share
 
 
-def _spawn_enemy(map_width, map_height, assets, player_x, player_y):
-    enemy_type = random.choice(['esqueleto', 'lobisomem', 'mago'])
+EVO_SPAWN_START_MS = 90_000  # 1:30
+PHASE_1_MS = 15_000           # 0-15s:  só esqueleto
+PHASE_2_MS = 30_000           # 15-30s: esqueleto + lobisomem
+PHASE_3_MS = 45_000           # 30-45s: + mago
+# 45s-1:30:                             + leao (pool completo)
 
-    if enemy_type == 'mago':
+def _spawn_enemy(map_width, map_height, assets, elapsed_ms=0):
+    if elapsed_ms >= EVO_SPAWN_START_MS:
+        enemy_type = random.choices(
+            ['lobisomem_evo', 'mago_evo', 'esqueleto_evo', 'leao_evo'],
+            weights=[30, 22, 38, 10],
+            k=1
+        )[0]
+    elif elapsed_ms >= PHASE_3_MS:
+        enemy_type = random.choices(
+            ['esqueleto', 'lobisomem', 'mago', 'leao'],
+            weights=[45, 30, 20, 5],
+            k=1
+        )[0]
+    elif elapsed_ms >= PHASE_2_MS:
+        enemy_type = random.choices(
+            ['esqueleto', 'lobisomem', 'mago'],
+            weights=[50, 35, 15],
+            k=1
+        )[0]
+    elif elapsed_ms >= PHASE_1_MS:
+        enemy_type = random.choices(
+            ['esqueleto', 'lobisomem'],
+            weights=[60, 40],
+            k=1
+        )[0]
+    else:
+        enemy_type = 'esqueleto'
+
+    if enemy_type in ('mago', 'mago_evo'):
         centro_x = map_width // 2
         centro_y = map_height // 2
         raio = 760
@@ -107,17 +140,30 @@ def _spawn_enemy(map_width, map_height, assets, player_x, player_y):
             y = centro_y + raio
             side = 'right'
 
+        if enemy_type == 'mago_evo':
+            return MagoEvo(x, y, assets, side=side)
         return Mago(x, y, assets, side=side)
 
     angle = random.uniform(0, 6.28318)
-    distance = random.randint(240, 520)
-    x = player_x + int(distance * pygame.math.Vector2(1, 0).rotate_rad(angle).x)
-    y = player_y + int(distance * pygame.math.Vector2(1, 0).rotate_rad(angle).y)
+    arena_cx = map_width // 2
+    arena_cy = map_height // 2
+    perimeter_radius = 720
+    vec = pygame.math.Vector2(1, 0).rotate_rad(angle)
+    x = arena_cx + int(perimeter_radius * vec.x)
+    y = arena_cy + int(perimeter_radius * vec.y)
     x = max(100, min(x, map_width - 100))
     y = max(100, min(y, map_height - 100))
 
     if enemy_type == 'esqueleto':
         return Esqueleto(x, y, assets)
+    elif enemy_type == 'esqueleto_evo':
+        return EsqueletoEvo(x, y, assets)
+    elif enemy_type == 'leao':
+        return Leao(x, y, assets)
+    elif enemy_type == 'leao_evo':
+        return LeaoEvo(x, y, assets)
+    elif enemy_type == 'lobisomem_evo':
+        return LobisomemEvo(x, y, assets)
     else:
         return Lobisomem(x, y, assets)
 
@@ -196,8 +242,13 @@ def game_screen(screen, assets):
     pygame.mixer.music.play(-1)
     clock = pygame.time.Clock()
     background_arena = assets[ARENA_COLISEU]
+    background_fogo = assets[ARENA_FOGO]
     map_width = background_arena.get_width()
     map_height = background_arena.get_height()
+
+    current_background = background_arena
+    transition_cap = None
+    transition_done = False
 
     player = Player(map_width, map_height, assets)
 
@@ -233,14 +284,21 @@ def game_screen(screen, assets):
         WAVE_FIRST_GROWTH_MS
         + ((MAX_WAVE_SIZE - BASE_WAVE_SIZE) // WAVE_GROWTH_AMOUNT - 1) * WAVE_GROWTH_INTERVAL_MS
     )
+    MEDKIT_SPAWN_INTERVAL_MS = 20_000  # novo medkit a cada 20s
+    MEDKIT_MAX = 3                      # máximo simultâneo
+    MEDKIT_HEAL = 40
+
     game_start_ms = pygame.time.get_ticks()
     next_spawn_ms = game_start_ms + SPAWN_INTERVAL_MS
+    next_medkit_ms = game_start_ms + MEDKIT_SPAWN_INTERVAL_MS
+    medkit_spawns = []
+    medkit_img = pygame.transform.smoothscale(assets['medkit_pickup'], (72, 72))
     boss_spawned = False
     boss_defeated_ms = None
 
     initial_enemy_count = min(MAX_SPAWN_BATCH, BASE_WAVE_SIZE)
     enemies = [
-        _spawn_enemy(map_width, map_height, assets, player.x, player.y)
+        _spawn_enemy(map_width, map_height, assets)
         for _ in range(initial_enemy_count)
     ]
     spells = []
@@ -259,6 +317,9 @@ def game_screen(screen, assets):
     LOBISOMEM_DAMAGE_COOLDOWN_MS = 1500
     MINOTAURO_DAMAGE_COOLDOWN_MS = 3000
 
+    WAVE_FREEZE_START_MS = 90_000   # 1:30 - congela wave
+    WAVE_FREEZE_END_MS   = 210_000  # 3:30 - retoma crescimento
+
     def current_wave_size(now):
         if boss_defeated_ms is not None:
             resume_ms = boss_defeated_ms + POST_BOSS_RESUME_DELAY_MS
@@ -271,6 +332,9 @@ def game_screen(screen, assets):
         elapsed = now - game_start_ms
         if elapsed < WAVE_FIRST_GROWTH_MS:
             return BASE_WAVE_SIZE
+
+        if WAVE_FREEZE_START_MS <= elapsed < WAVE_FREEZE_END_MS:
+            elapsed = WAVE_FREEZE_START_MS
 
         growth_steps = 1 + (elapsed - WAVE_FIRST_GROWTH_MS) // WAVE_GROWTH_INTERVAL_MS
         return min(MAX_WAVE_SIZE, BASE_WAVE_SIZE + growth_steps * WAVE_GROWTH_AMOUNT)
@@ -306,18 +370,18 @@ def game_screen(screen, assets):
 
         spawn_count = min(missing_enemies, random.randint(1, MAX_SPAWN_BATCH))
         for _ in range(spawn_count):
-            enemies.append(_spawn_enemy(map_width, map_height, assets, player.x, player.y))
+            enemies.append(_spawn_enemy(map_width, map_height, assets, now - game_start_ms))
 
         next_spawn_ms = now + current_spawn_interval(now)
 
     def kill_enemy(enemy):
         nonlocal boss_defeated_ms, next_spawn_ms
 
-        if enemy.kind == 'mago':
+        if enemy.kind in ('mago', ENEMY_MAGO_EVO):
             death_sound = SFX_MAGE_DEATH
         elif enemy.kind == ENEMY_MINOTAURO:
             death_sound = SFX_MINOTAUR_DEATH
-        elif enemy.kind == 'lobisomem':
+        elif enemy.kind in ('lobisomem', ENEMY_LOBISOMEM_EVO, ENEMY_LEAO, ENEMY_LEAO_EVO):
             death_sound = SFX_MONSTER_DEATH
         else:
             death_sound = SFX_ENEMY_DEATH
@@ -493,7 +557,7 @@ def game_screen(screen, assets):
                 now = pygame.time.get_ticks()
                 if enemy.kind == ENEMY_MINOTAURO:
                     contact_cooldown = MINOTAURO_DAMAGE_COOLDOWN_MS
-                elif enemy.kind == 'lobisomem':
+                elif enemy.kind in ('lobisomem', ENEMY_LOBISOMEM_EVO, ENEMY_LEAO, ENEMY_LEAO_EVO):
                     contact_cooldown = LOBISOMEM_DAMAGE_COOLDOWN_MS
                 else:
                     contact_cooldown = CONTACT_DAMAGE_COOLDOWN_MS
@@ -503,7 +567,7 @@ def game_screen(screen, assets):
                     player.take_damage(enemy.damage)
                     if enemy.kind == ENEMY_MINOTAURO:
                         damage_sound = SFX_MINOTAUR_ATTACK
-                    elif enemy.kind == 'lobisomem':
+                    elif enemy.kind in ('lobisomem', ENEMY_LOBISOMEM_EVO, ENEMY_LEAO, ENEMY_LEAO_EVO):
                         damage_sound = SFX_MONSTER_BITE
                     else:
                         damage_sound = SFX_HIT
@@ -542,7 +606,29 @@ def game_screen(screen, assets):
         vcamerax = player.x - LARGURA_TELA // 2
         vcameray = player.y - ALTURA_TELA // 2
 
+        if not transition_done and not transition_cap and pygame.time.get_ticks() - game_start_ms >= EVO_SPAWN_START_MS:
+            transition_cap = cv2.VideoCapture(assets[VIDEO_TRANSICAO])
+
         maintain_enemy_count()
+
+        # Spawn e coleta de medkits
+        now_ms = pygame.time.get_ticks()
+        if now_ms >= next_medkit_ms and len(medkit_spawns) < MEDKIT_MAX:
+            angle = random.uniform(0, 6.28318)
+            radius = random.uniform(150, 580)
+            vec = pygame.math.Vector2(1, 0).rotate_rad(angle)
+            mx = map_width // 2 + int(radius * vec.x)
+            my = map_height // 2 + int(radius * vec.y)
+            medkit_spawns.append([mx, my])
+            next_medkit_ms = now_ms + MEDKIT_SPAWN_INTERVAL_MS
+
+        for mk in medkit_spawns[:]:
+            mk_rect = pygame.Rect(mk[0] - 36, mk[1] - 36, 72, 72)
+            if player_rect.colliderect(mk_rect):
+                player.health = min(player.max_health, player.health + MEDKIT_HEAL)
+                message = f'+{MEDKIT_HEAL} VIDA'
+                message_timer = pygame.time.get_ticks() + 1000
+                medkit_spawns.remove(mk)
 
         # Atualiza feitiços
         for spell in spells[:]:
@@ -571,13 +657,39 @@ def game_screen(screen, assets):
         
         # Desenho
         screen.fill((0, 0, 0))
-        screen.blit(background_arena, (-vcamerax, -vcameray))
+        if transition_cap is not None:
+            ret, frame = transition_cap.read()
+            if ret:
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                vid_h, vid_w = frame.shape[:2]
+                map_w = int(LARGURA_TELA * 2.5)
+                map_h = int(ALTURA_TELA * 2.5)
+                cx = max(0, int(vcamerax * vid_w / map_w))
+                cy = max(0, int(vcameray * vid_h / map_h))
+                cw = min(int(LARGURA_TELA * vid_w / map_w), vid_w - cx)
+                ch = min(int(ALTURA_TELA * vid_h / map_h), vid_h - cy)
+                cropped = frame[cy:cy + ch, cx:cx + cw]
+                scaled = cv2.resize(cropped, (LARGURA_TELA, ALTURA_TELA))
+                frame_surf = pygame.surfarray.make_surface(scaled.swapaxes(0, 1))
+                screen.blit(frame_surf, (0, 0))
+            else:
+                transition_cap.release()
+                transition_cap = None
+                transition_done = True
+                current_background = background_fogo
+                screen.blit(current_background, (-vcamerax, -vcameray))
+        else:
+            screen.blit(current_background, (-vcamerax, -vcameray))
 
         # Desenha caixa de cura
         screen.blit(
             heal_image,
             (heal_rect.x - vcamerax, heal_rect.y - vcameray)
         )
+
+        # Desenha medkits no chão
+        for mk in medkit_spawns:
+            screen.blit(medkit_img, (mk[0] - vcamerax - 36, mk[1] - vcameray - 36))
         for arrow in arrows:
             arrow.draw(screen, vcamerax, vcameray)
 
@@ -635,10 +747,10 @@ def game_screen(screen, assets):
         hud.fill((0, 0, 0, 140))
         screen.blit(hud, (18, 18))
         _draw_text(screen, font_mid, f'Vida: {player.health}/{player.max_health}', 30, 28)
-        _draw_text(screen, font_mid, f'Moedas: {player.coins}', 30, 62)     
+        _draw_text(screen, font_mid, f'Moedas: {player.coins}', 30, 62)
         _draw_text(screen, font_mid, f'Pontos: {player.score}', 30, 96)
-        _draw_text(screen, font_small, f'Arma: {player.weapon}', 30, 135)
-        _draw_text(screen, font_small, 'Mover: WASD | Atacar: J ou ESPACO', 30, 163)
+        _draw_text(screen, font_small, f'Arma: {player.weapon}', 30, 130)
+        _draw_text(screen, font_small, 'Mover: WASD | Atacar: J ou ESPACO', 30, 158)
 
         if message_timer > pygame.time.get_ticks():
             msg = font_mid.render(message, True, (255, 240, 120))

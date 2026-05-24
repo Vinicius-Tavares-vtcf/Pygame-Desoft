@@ -14,14 +14,21 @@ MUSICA_INICIAL = 'musica_inicial'
 MUSICA_MIDGAME = 'musica_midgame'
 HOVER_SAIR = 'hover_sair'
 ARENA_COLISEU = 'Arena_Coliseu'
+ARENA_FOGO = 'Arena_Fogo'
+VIDEO_TRANSICAO = 'video_transicao'
 MEDKIT = 'medkit'
 
 WEAPON_ESPADA = 'weapon_espada'
 WEAPON_ARCO = 'weapon_arco'
 WEAPON_CAJADO = 'weapon_cajado'
 ENEMY_ESQUELETO = 'esqueleto'
+ENEMY_ESQUELETO_EVO = 'esqueleto_evo'
 ENEMY_LOBISOMEM = 'lobisomem'
+ENEMY_LOBISOMEM_EVO = 'lobisomem_evo'
+ENEMY_LEAO = 'leao'
+ENEMY_LEAO_EVO = 'leao_evo'
 ENEMY_MAGO = 'mago'
+ENEMY_MAGO_EVO = 'mago_evo'
 ENEMY_MINOTAURO = 'minotauro'
 
 SFX_SWORD = 'sfx_sword'
@@ -69,12 +76,21 @@ def load_assets():
     background_arena = pygame.image.load(path.join(IMG_DIR, 'Arena Coliseu.jpeg')).convert_alpha()
     assets[ARENA_COLISEU] = pygame.transform.smoothscale(background_arena, (int(LARGURA_TELA * 2.5), int(ALTURA_TELA * 2.5)))
 
+    background_fogo = pygame.image.load(path.join(IMG_DIR, 'Arena_Fogo.jpeg')).convert_alpha()
+    assets[ARENA_FOGO] = pygame.transform.smoothscale(background_fogo, (int(LARGURA_TELA * 2.5), int(ALTURA_TELA * 2.5)))
+    assets[VIDEO_TRANSICAO] = path.join(IMG_DIR, 'ColiseuPegandoFogo.mp4')
+
     assets['player_sheet'] = pygame.image.load(path.join(IMG_DIR, 'PersonagemRomano32bit.png')).convert_alpha()
     assets[ENEMY_ESQUELETO] = pygame.image.load(path.join(IMG_DIR, 'Esqueleto32bit.png')).convert_alpha()
-    assets[ENEMY_LOBISOMEM] = pygame.image.load(path.join(IMG_DIR, 'Leão32bit.png')).convert_alpha()
+    assets[ENEMY_ESQUELETO_EVO] = pygame.image.load(path.join(IMG_DIR, 'Esqueleto32bitV1.png')).convert_alpha()
+    assets[ENEMY_LOBISOMEM] = pygame.image.load(path.join(IMG_DIR, 'Lobisomem32bit.png')).convert_alpha()
+    assets[ENEMY_LOBISOMEM_EVO] = assets[ENEMY_LOBISOMEM]
+    assets[ENEMY_LEAO] = pygame.image.load(path.join(IMG_DIR, 'Leão32bit.png')).convert_alpha()
+    assets[ENEMY_LEAO_EVO] = pygame.image.load(path.join(IMG_DIR, 'Leão32bitV1.png')).convert_alpha()
     assets[ENEMY_MINOTAURO] = pygame.image.load(path.join(IMG_DIR, 'Minotauro32bit.png')).convert_alpha()
 
     assets[MEDKIT] = _load_scaled_image(IMG_DIR, 'Totemdecura32bit.png', (280, 280))
+    assets['medkit_pickup'] = pygame.image.load(path.join(IMG_DIR, 'medkit.png')).convert_alpha()
 
     assets['arrow'] = pygame.transform.smoothscale(
     pygame.image.load(path.join(IMG_DIR, 'Flecha.png')).convert_alpha(),
@@ -115,6 +131,26 @@ def load_assets():
     assets['mago_left'] = left
     assets['mago_right'] = right
 
+    def _split_mage_sheet(filename, scale=0.35):
+        sheet = pygame.image.load(path.join(IMG_DIR, filename)).convert_alpha()
+        w = sheet.get_width() // 2
+        h = sheet.get_height()
+        l = sheet.subsurface((0, 0, w, h)).copy()
+        r = sheet.subsurface((w, 0, w, h)).copy()
+        lr = l.get_bounding_rect()
+        rr = r.get_bounding_rect()
+        if lr.width > 0 and lr.height > 0:
+            l = l.subsurface(lr).copy()
+        if rr.width > 0 and rr.height > 0:
+            r = r.subsurface(rr).copy()
+        l = pygame.transform.smoothscale(l, (int(l.get_width() * scale), int(l.get_height() * scale)))
+        r = pygame.transform.smoothscale(r, (int(r.get_width() * scale), int(r.get_height() * scale)))
+        return l, r
+
+    mago_evo_left, mago_evo_right = _split_mage_sheet('Mago32bitV1.png')
+    assets['mago_evo_left'] = mago_evo_left
+    assets['mago_evo_right'] = mago_evo_right
+
     # As armas no mapa e na mao do personagem precisam ficar maiores para serem visiveis.
     assets[WEAPON_ESPADA] = pygame.image.load(path.join(IMG_DIR, 'Espada32bit.png')).convert_alpha()
     assets[WEAPON_ARCO] = pygame.image.load(path.join(IMG_DIR, 'Arco32bit.png')).convert_alpha()
@@ -129,6 +165,12 @@ def load_assets():
     assets['water_spell_3'] = load_spell('Water__0332bit.png')
     assets['water_spell_4'] = load_spell('Water__0432bit.png')
     assets['water_spell_5'] = load_spell('Water__0532bit.png')
+
+    assets['fire_spell_1'] = load_spell('Fire_0132bit.png')
+    assets['fire_spell_2'] = load_spell('Fire_0232bit.png')
+    assets['fire_spell_3'] = load_spell('Fire_0332bit.png')
+    assets['fire_spell_4'] = load_spell('Fire_0432bit.png')
+    assets['fire_spell_5'] = load_spell('Fire_0532bit.png')
 
     # ----- Sons
     music_path = path.join(SND_DIR, 'Musica-Epica.mp3')
