@@ -175,7 +175,7 @@ class Player:
             return 'down'
         else:
             return 'down_right'
-    def equip(self, weapon_name, weapon_sheet=None):
+    def equip(self, weapon_name, weapon_sheet=None, weapon_frame=None):
         weapons = {
             'Espada': {'damage': 4, 'range': 66},
             'Arco': {'damage': 2, 'range': 140},
@@ -188,8 +188,9 @@ class Player:
         self.weapon_damage = weapon['damage']
         self.attack_range = weapon['range']
 
-        if weapon_sheet is not None:
-            # pega uma parte visível da arma para desenhar na mão
+        if weapon_frame is not None:
+            self.weapon_image = weapon_frame
+        elif weapon_sheet is not None:
             self.weapon_image = melhor_frame_visivel(weapon_sheet, grid=8)
         else:
             self.weapon_image = None

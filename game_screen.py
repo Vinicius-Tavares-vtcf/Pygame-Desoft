@@ -252,20 +252,40 @@ def game_screen(screen, assets):
 
     player = Player(map_width, map_height, assets)
 
-    # Caixa de Cura
-    heal_price = 25
-    heal_amount = 50
-    heal_image = assets[MEDKIT]
-    heal_rect = heal_image.get_rect(center=(map_width // 2 + 590, map_height // 2 - 430))
-
     font_small = pygame.font.SysFont('arial', 24, bold=True)
     font_mid = pygame.font.SysFont('arial', 32, bold=True)
 
-    weapon_pickups = [
-        WeaponPickup(map_width // 2 - 180, map_height // 2 + 130, assets[WEAPON_ESPADA], 'Espada', price=40),
-        WeaponPickup(map_width // 2 + 220, map_height // 2 - 120, assets[WEAPON_ARCO], 'Arco', price=10),
-        WeaponPickup(map_width // 2 + 40, map_height // 2 + 220, assets[WEAPON_CAJADO], 'Cajado', price=15),
-    ]
+    # Cabana de armas
+    CABIN_X = map_width // 2 + 640
+    CABIN_Y = map_height // 2 - 530
+    cabin_image = assets[WEAPON_CABIN]
+    cabin_rect = cabin_image.get_rect(center=(CABIN_X, CABIN_Y))
+    cabin_interact_rect = pygame.Rect(0, 0, 160, 160)
+    cabin_interact_rect.center = (CABIN_X, CABIN_Y)
+
+    WEAPON_BUY_PRICES  = {'Arco': 20, 'Cajado': 30, 'Espada': 40}
+    WEAPON_UPGRADE_PRICE = 50
+    WEAPON_BASE_DAMAGE   = {'Espada': 4, 'Arco': 2, 'Cajado': 3, 'Punhos': 1}
+    WEAPON_SHEETS     = {'Espada': assets[WEAPON_ESPADA], 'Arco': assets[WEAPON_ARCO], 'Cajado': assets[WEAPON_CAJADO]}
+    WEAPON_EVO_SHEETS = {'Espada': assets[WEAPON_ESPADA_EVO], 'Arco': assets[WEAPON_ARCO_EVO], 'Cajado': assets[WEAPON_CAJADO_EVO]}
+    owned_weapons   = {'Punhos'}
+    weapon_upgrades = {'Arco': 0, 'Cajado': 0, 'Espada': 0}
+    shop_open = False
+
+    def apply_upgrade(weapon_name):
+        level = weapon_upgrades.get(weapon_name, 0)
+        base  = WEAPON_BASE_DAMAGE[weapon_name]
+        if level > 0 and weapon_name == 'Espada':
+            player.equip(weapon_name, weapon_frame=assets['weapon_espada_evo_frame'])
+        else:
+            sheet = WEAPON_EVO_SHEETS[weapon_name] if level > 0 else WEAPON_SHEETS[weapon_name]
+            player.equip(weapon_name, sheet)
+        if weapon_name == 'Cajado' and level > 0 and player.weapon_image:
+            img = player.weapon_image
+            player.weapon_image = pygame.transform.smoothscale(
+                img, (int(img.get_width() * 0.9), int(img.get_height() * 0.9))
+            )
+        player.weapon_damage = int(base * (1.5 ** level))
 
     BASE_WAVE_SIZE = 6
     MAX_WAVE_SIZE = 20
@@ -404,6 +424,8 @@ def game_screen(screen, assets):
     while running:
         clock.tick(FPS)
         buy_requested = False
+        shop_slot_pressed = None
+        shop_upgrade_pressed = None
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -411,16 +433,21 @@ def game_screen(screen, assets):
                 running = False
             if event.type == pygame.KEYDOWN:
                 if event.key in (pygame.K_j, pygame.K_SPACE):
-                    if player.start_attack():
-                        attack_hit_enemies.clear()
-                        if player.weapon == 'Espada':
-                            assets[SFX_SWORD].play()
-                        message = 'Ataque!'
-                        message_timer = pygame.time.get_ticks() + 400
-                # Compra da arma
+                    if not shop_open:
+                        if player.start_attack():
+                            attack_hit_enemies.clear()
+                            if player.weapon == 'Espada':
+                                assets[SFX_SWORD].play()
+                            message = 'Ataque!'
+                            message_timer = pygame.time.get_ticks() + 400
                 if event.key == pygame.K_e:
                     buy_requested = True
-                
+                if event.key in (pygame.K_1, pygame.K_2, pygame.K_3):
+                    idx = {pygame.K_1: 0, pygame.K_2: 1, pygame.K_3: 2}[event.key]
+                    if event.mod & pygame.KMOD_SHIFT:
+                        shop_upgrade_pressed = idx
+                    else:
+                        shop_slot_pressed = idx
                 if event.key == pygame.K_RETURN:
                     state = QUIT
                     running = False
@@ -440,7 +467,7 @@ def game_screen(screen, assets):
                             player.y,
                             target_x,
                             target_y,
-                            assets['arrow'],
+                            assets['arrow_fire'] if weapon_upgrades.get('Arco', 0) > 0 else assets['arrow'],
                             speed=18,
                             damage=player.weapon_damage
                         )
@@ -478,45 +505,47 @@ def game_screen(screen, assets):
 
         # Equipar arma ao tocar nela.
         player_rect = _player_collision_rect(player)
-        remaining_pickups = []
-        pickup_em_cima = None
+        # Cabana de armas
+        near_cabin = player_rect.colliderect(cabin_interact_rect)
+        if near_cabin and buy_requested:
+            shop_open = not shop_open
 
-        for pickup in weapon_pickups:
-            if player_rect.colliderect(pickup.rect):
-                shop_message = f'{pickup.price} moedas | Aperte E para comprar'
-                shop_message_timer = pygame.time.get_ticks() + 200
+        if shop_open and not near_cabin:
+            shop_open = False
 
-                if buy_requested:
-                    if player.coins >= pickup.price:
-                        player.coins -= pickup.price
-                        player.equip(pickup.name, pickup.equip_sheet)
-                        message = f'Comprou {pickup.name} por {pickup.price} moedas!'
-                        message_timer = pygame.time.get_ticks() + 1200
-                        continue
+        if shop_open:
+            WEAPON_ORDER = ['Arco', 'Cajado', 'Espada']
+            if shop_slot_pressed is not None:
+                w = WEAPON_ORDER[shop_slot_pressed]
+                if w not in owned_weapons:
+                    price = WEAPON_BUY_PRICES[w]
+                    if player.coins >= price:
+                        player.coins -= price
+                        owned_weapons.add(w)
+                        apply_upgrade(w)
+                        message = f'Comprou e equipou {w}!'
                     else:
-                        message = f'Precisa de {pickup.price} moedas!'
-                        message_timer = pygame.time.get_ticks() + 1200
-
-            remaining_pickups.append(pickup)
-
-        weapon_pickups = remaining_pickups
-
-        if player_rect.colliderect(heal_rect):
-            shop_message = f'{heal_price} moedas | Aperte E para curar'
-            shop_message_timer = pygame.time.get_ticks() + 200
-
-            if buy_requested:
-                if player.health >= player.max_health:
-                    message = 'Vida cheia!'
-                    message_timer = pygame.time.get_ticks() + 1200
-                elif player.coins >= heal_price:
-                    player.coins -= heal_price
-                    player.health = min(player.max_health, player.health + heal_amount)
-                    message = f'+{heal_amount} VIDA'
-                    message_timer = pygame.time.get_ticks() + 1200
+                        message = f'Precisa de {WEAPON_BUY_PRICES[w]} moedas!'
                 else:
-                    message = 'Moedas insuficientes!'
-                    message_timer = pygame.time.get_ticks() + 1200
+                    apply_upgrade(w)
+                    message = f'{w} equipada!'
+                message_timer = pygame.time.get_ticks() + 1200
+
+            if shop_upgrade_pressed is not None:
+                w = WEAPON_ORDER[shop_upgrade_pressed]
+                if w not in owned_weapons:
+                    message = f'Compre {w} primeiro!'
+                elif weapon_upgrades[w] >= 1:
+                    message = f'{w} ja esta no nivel maximo!'
+                elif player.coins >= WEAPON_UPGRADE_PRICE:
+                    player.coins -= WEAPON_UPGRADE_PRICE
+                    weapon_upgrades[w] += 1
+                    if player.weapon == w:
+                        apply_upgrade(w)
+                    message = f'{w} aprimorada!'
+                else:
+                    message = f'Precisa de {WEAPON_UPGRADE_PRICE} moedas!'
+                message_timer = pygame.time.get_ticks() + 1200
 
         # Atualiza inimigos.
         for enemy in enemies[:]:
@@ -681,11 +710,8 @@ def game_screen(screen, assets):
         else:
             screen.blit(current_background, (-vcamerax, -vcameray))
 
-        # Desenha caixa de cura
-        screen.blit(
-            heal_image,
-            (heal_rect.x - vcamerax, heal_rect.y - vcameray)
-        )
+        # Desenha cabana de armas
+        screen.blit(cabin_image, (cabin_rect.x - vcamerax, cabin_rect.y - vcameray))
 
         # Desenha medkits no chão
         for mk in medkit_spawns:
@@ -693,9 +719,32 @@ def game_screen(screen, assets):
         for arrow in arrows:
             arrow.draw(screen, vcamerax, vcameray)
 
-        for pickup in weapon_pickups:
-            show_hint = player_rect.colliderect(pickup.rect)
-            pickup.draw(screen, vcamerax, vcameray, show_hint=show_hint)
+        # UI da loja
+        if shop_open:
+            panel = pygame.Surface((560, 290), pygame.SRCALPHA)
+            panel.fill((0, 0, 0, 200))
+            panel_x = LARGURA_TELA // 2 - 280
+            panel_y = ALTURA_TELA // 2 - 445
+            screen.blit(panel, (panel_x, panel_y))
+            px = panel_x + 20
+            py = panel_y + 14
+            _draw_text(screen, font_mid, 'BARRACA DE ARMAS', px, py)
+            WEAPON_ORDER = ['Arco', 'Cajado', 'Espada']
+            for i, w in enumerate(WEAPON_ORDER):
+                if w in owned_weapons:
+                    upgraded = weapon_upgrades[w] >= 1
+                    status = 'MAX' if upgraded else f'Upgradar: {WEAPON_UPGRADE_PRICE} moedas'
+                    cor = (180, 180, 180) if upgraded else (255, 220, 80)
+                else:
+                    status = f'Comprar: {WEAPON_BUY_PRICES[w]} moedas'
+                    cor = (255, 255, 255)
+                atalho = f'[{i+1}] Equipar  |  [Shift+{i+1}] Upgradar' if w in owned_weapons else f'[{i+1}] Comprar'
+                _draw_text(screen, font_mid, f'{w}  —  {status}', px, py + 46 + i * 58, cor)
+                _draw_text(screen, font_small, atalho, px + 10, py + 75 + i * 58, (140, 200, 255))
+            _draw_text(screen, font_small, '[E] Fechar', px, py + 240, (160, 160, 160))
+        elif near_cabin:
+            shop_message = 'Aperte E para abrir a loja'
+            shop_message_timer = pygame.time.get_ticks() + 200
 
 
         for enemy in enemies:

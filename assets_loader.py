@@ -18,9 +18,13 @@ ARENA_FOGO = 'Arena_Fogo'
 VIDEO_TRANSICAO = 'video_transicao'
 MEDKIT = 'medkit'
 
+WEAPON_CABIN = 'weapon_cabin'
 WEAPON_ESPADA = 'weapon_espada'
 WEAPON_ARCO = 'weapon_arco'
 WEAPON_CAJADO = 'weapon_cajado'
+WEAPON_ESPADA_EVO = 'weapon_espada_evo'
+WEAPON_ARCO_EVO = 'weapon_arco_evo'
+WEAPON_CAJADO_EVO = 'weapon_cajado_evo'
 ENEMY_ESQUELETO = 'esqueleto'
 ENEMY_ESQUELETO_EVO = 'esqueleto_evo'
 ENEMY_LOBISOMEM = 'lobisomem'
@@ -90,6 +94,10 @@ def load_assets():
     assets[ENEMY_MINOTAURO] = pygame.image.load(path.join(IMG_DIR, 'Minotauro32bit.png')).convert_alpha()
 
     assets[MEDKIT] = _load_scaled_image(IMG_DIR, 'Totemdecura32bit.png', (280, 280))
+    assets[WEAPON_CABIN] = pygame.transform.smoothscale(
+        pygame.image.load(path.join(IMG_DIR, 'Cabana_Armas32bit.png')).convert_alpha(),
+        (450, 450)
+    )
     assets['medkit_pickup'] = pygame.image.load(path.join(IMG_DIR, 'medkit.png')).convert_alpha()
 
     assets['arrow'] = pygame.transform.smoothscale(
@@ -155,6 +163,24 @@ def load_assets():
     assets[WEAPON_ESPADA] = pygame.image.load(path.join(IMG_DIR, 'Espada32bit.png')).convert_alpha()
     assets[WEAPON_ARCO] = pygame.image.load(path.join(IMG_DIR, 'Arco32bit.png')).convert_alpha()
     assets[WEAPON_CAJADO] = pygame.image.load(path.join(IMG_DIR, 'Cajado32bit.png')).convert_alpha()
+
+    _espada_evo_sheet = pygame.image.load(path.join(IMG_DIR, 'Espada32bitV1.png')).convert_alpha()
+    assets[WEAPON_ESPADA_EVO] = _espada_evo_sheet
+    _fw = _espada_evo_sheet.get_width() // 8
+    _fh = _espada_evo_sheet.get_height() // 8
+    _raw = _espada_evo_sheet.subsurface((0 * _fw, 3 * _fh, _fw, _fh)).copy()
+    assets['weapon_espada_evo_frame'] = pygame.transform.smoothscale(
+        _raw, (int(_raw.get_width() * 0.45), int(_raw.get_height() * 0.45))
+    )
+    assets[WEAPON_CAJADO_EVO] = pygame.image.load(path.join(IMG_DIR, 'Cajado32bitV1.png')).convert_alpha()
+    arco_evo = assets[WEAPON_ARCO].copy()
+    arco_evo.fill((255, 100, 65), special_flags=pygame.BLEND_RGBA_MULT)
+    assets[WEAPON_ARCO_EVO] = arco_evo
+
+    assets['arrow_fire'] = pygame.transform.smoothscale(
+        pygame.image.load(path.join(IMG_DIR, 'FlechaV1.png')).convert_alpha(),
+        (48, 48)
+    )
 
     def load_spell(name):
         img = pygame.image.load(path.join(IMG_DIR, name)).convert_alpha()
