@@ -758,6 +758,78 @@ class MagoEvo(Mago):
         return MageSpell(self.x, self.y, end.x, end.y, frames, speed=13, damage=4)
 
 
+class EsqueletoSpace(Enemy):
+    KIND = 'esqueleto_space_sheet'
+    HP_RANGE = (3, 3)
+    HITS_TO_DIE_BY_WEAPON = {'Punhos': 7, 'Cajado': 4, 'Espada': 3}
+    DAMAGE = 6
+    SPEED_RANGE = (5, 9)
+    COINS_RANGE = (3, 6)
+    ATTACK_RANGE = 130
+    ATTACK_COOLDOWN_MS = 180
+    ATTACK_DURATION_MS = 150
+
+    def __init__(self, x, y, assets):
+        super().__init__(x, y, assets)
+        self.kind = 'esqueleto_space'
+
+
+class LobisomemSpace(Enemy):
+    KIND = 'lobisomem_space_sheet'
+    HP_RANGE = (12, 12)
+    HITS_TO_DIE_BY_WEAPON = {'Punhos': 14, 'Cajado': 8, 'Espada': 5}
+    DAMAGE = 12
+    SPEED_RANGE = (4, 7)
+    COINS_RANGE = (5, 9)
+    ATTACK_RANGE = 160
+    ATTACK_COOLDOWN_MS = 900
+    ATTACK_DURATION_MS = 450
+
+    def __init__(self, x, y, assets):
+        super().__init__(x, y, assets)
+        self.kind = 'lobisomem_space'
+
+
+class LeaoSpace(Enemy):
+    KIND = 'leao_space_sheet'
+    HP_RANGE = (18, 18)
+    HITS_TO_DIE_BY_WEAPON = {'Punhos': 20, 'Cajado': 13, 'Espada': 9}
+    DAMAGE = 16
+    SPEED_RANGE = (4, 6)
+    COINS_RANGE = (10, 18)
+    SCALE = 1.8
+    ATTACK_RANGE = 180
+    ATTACK_COOLDOWN_MS = 1200
+    ATTACK_DURATION_MS = 600
+
+    def __init__(self, x, y, assets):
+        super().__init__(x, y, assets)
+        self.kind = 'leao_space'
+
+
+class MagoSpace(MagoEvo):
+    def __init__(self, x, y, assets, side='left'):
+        super().__init__(x, y, assets, side=side)
+        self.kind = 'mago_space'
+        self.health = 10
+        self.max_health = 10
+        self.hits_to_die_by_weapon = {'Punhos': 9, 'Cajado': 6, 'Espada': 3}
+        self.coins_reward = random.randint(5, 9)
+        self.cast_cooldown_ms = 1200
+        img = assets['mago_space_left'] if side == 'left' else assets['mago_space_right']
+        self.static_image = pygame.transform.smoothscale(
+            img, (int(img.get_width() * 0.45), int(img.get_height() * 0.45))
+        )
+
+    def cast_spell(self, assets, arena_center_x, arena_center_y):
+        self.last_cast_ms = pygame.time.get_ticks()
+        start = pygame.Vector2(self.x, self.y)
+        center = pygame.Vector2(arena_center_x, arena_center_y)
+        end = center * 2 - start
+        frames = [assets[f'space_spell_{i}'] for i in range(1, 6)]
+        return MageSpell(self.x, self.y, end.x, end.y, frames, speed=15, damage=5)
+
+
 class WeaponPickup:
     def __init__(self, x, y, image, name, price):
         self.name = name

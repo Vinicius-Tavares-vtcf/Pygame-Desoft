@@ -88,8 +88,14 @@ PHASE_2_MS = 30_000           # 15-30s: esqueleto + lobisomem
 PHASE_3_MS = 45_000           # 30-45s: + mago
 # 45s-1:30:                             + leao (pool completo)
 
-def _spawn_enemy(map_width, map_height, assets, elapsed_ms=0):
-    if elapsed_ms >= EVO_SPAWN_START_MS:
+def _spawn_enemy(map_width, map_height, assets, elapsed_ms=0, post_boss=False):
+    if post_boss:
+        enemy_type = random.choices(
+            ['esqueleto_space', 'lobisomem_space', 'leao_space', 'mago_space'],
+            weights=[35, 28, 20, 17],
+            k=1
+        )[0]
+    elif elapsed_ms >= EVO_SPAWN_START_MS:
         enemy_type = random.choices(
             ['lobisomem_evo', 'mago_evo', 'esqueleto_evo', 'leao_evo'],
             weights=[30, 22, 38, 10],
@@ -116,7 +122,7 @@ def _spawn_enemy(map_width, map_height, assets, elapsed_ms=0):
     else:
         enemy_type = 'esqueleto'
 
-    if enemy_type in ('mago', 'mago_evo'):
+    if enemy_type in ('mago', 'mago_evo', 'mago_space'):
         centro_x = map_width // 2
         centro_y = map_height // 2
         raio = 760
@@ -140,6 +146,8 @@ def _spawn_enemy(map_width, map_height, assets, elapsed_ms=0):
             y = centro_y + raio
             side = 'right'
 
+        if enemy_type == 'mago_space':
+            return MagoSpace(x, y, assets, side=side)
         if enemy_type == 'mago_evo':
             return MagoEvo(x, y, assets, side=side)
         return Mago(x, y, assets, side=side)
@@ -158,12 +166,18 @@ def _spawn_enemy(map_width, map_height, assets, elapsed_ms=0):
         return Esqueleto(x, y, assets)
     elif enemy_type == 'esqueleto_evo':
         return EsqueletoEvo(x, y, assets)
+    elif enemy_type == 'esqueleto_space':
+        return EsqueletoSpace(x, y, assets)
     elif enemy_type == 'leao':
         return Leao(x, y, assets)
     elif enemy_type == 'leao_evo':
         return LeaoEvo(x, y, assets)
+    elif enemy_type == 'leao_space':
+        return LeaoSpace(x, y, assets)
     elif enemy_type == 'lobisomem_evo':
         return LobisomemEvo(x, y, assets)
+    elif enemy_type == 'lobisomem_space':
+        return LobisomemSpace(x, y, assets)
     else:
         return Lobisomem(x, y, assets)
 
@@ -246,9 +260,13 @@ def game_screen(screen, assets):
     map_width = background_arena.get_width()
     map_height = background_arena.get_height()
 
+    background_alien = assets[ARENA_ALIEN]
+
     current_background = background_arena
     transition_cap = None
     transition_done = False
+    transition_cap_alien = None
+    transition_done_alien = False
 
     player = Player(map_width, map_height, assets)
 
@@ -263,8 +281,9 @@ def game_screen(screen, assets):
     cabin_interact_rect = pygame.Rect(0, 0, 160, 160)
     cabin_interact_rect.center = (CABIN_X, CABIN_Y)
 
-    WEAPON_BUY_PRICES  = {'Arco': 20, 'Cajado': 30, 'Espada': 40}
-    WEAPON_UPGRADE_PRICE = 50
+    DEBUG_FREE_SHOP = True  # remover após testes
+    WEAPON_BUY_PRICES  = {'Arco': 0, 'Cajado': 0, 'Espada': 0} if DEBUG_FREE_SHOP else {'Arco': 20, 'Cajado': 30, 'Espada': 40}
+    WEAPON_UPGRADE_PRICE = 0 if DEBUG_FREE_SHOP else 50
     WEAPON_BASE_DAMAGE   = {'Espada': 4, 'Arco': 2, 'Cajado': 3, 'Punhos': 1}
     WEAPON_SHEETS     = {'Espada': assets[WEAPON_ESPADA], 'Arco': assets[WEAPON_ARCO], 'Cajado': assets[WEAPON_CAJADO]}
     WEAPON_EVO_SHEETS = {'Espada': assets[WEAPON_ESPADA_EVO], 'Arco': assets[WEAPON_ARCO_EVO], 'Cajado': assets[WEAPON_CAJADO_EVO]}
@@ -275,16 +294,30 @@ def game_screen(screen, assets):
     def apply_upgrade(weapon_name):
         level = weapon_upgrades.get(weapon_name, 0)
         base  = WEAPON_BASE_DAMAGE[weapon_name]
-        if level > 0 and weapon_name == 'Espada':
-            player.equip(weapon_name, weapon_frame=assets['weapon_espada_evo_frame'])
+        if level >= 2:
+            if weapon_name == 'Espada':
+                player.equip(weapon_name, assets['weapon_espada_space'])
+            elif weapon_name == 'Cajado':
+                player.equip(weapon_name, assets['weapon_cajado_space'])
+                if player.weapon_image:
+                    img = player.weapon_image
+                    player.weapon_image = pygame.transform.smoothscale(
+                        img, (int(img.get_width() * 0.9), int(img.get_height() * 0.9))
+                    )
+            else:
+                player.equip(weapon_name, assets['weapon_arco_space'])
+        elif level == 1:
+            if weapon_name == 'Espada':
+                player.equip(weapon_name, weapon_frame=assets['weapon_espada_evo_frame'])
+            else:
+                player.equip(weapon_name, WEAPON_EVO_SHEETS[weapon_name])
+            if weapon_name == 'Cajado' and player.weapon_image:
+                img = player.weapon_image
+                player.weapon_image = pygame.transform.smoothscale(
+                    img, (int(img.get_width() * 0.9), int(img.get_height() * 0.9))
+                )
         else:
-            sheet = WEAPON_EVO_SHEETS[weapon_name] if level > 0 else WEAPON_SHEETS[weapon_name]
-            player.equip(weapon_name, sheet)
-        if weapon_name == 'Cajado' and level > 0 and player.weapon_image:
-            img = player.weapon_image
-            player.weapon_image = pygame.transform.smoothscale(
-                img, (int(img.get_width() * 0.9), int(img.get_height() * 0.9))
-            )
+            player.equip(weapon_name, WEAPON_SHEETS[weapon_name])
         player.weapon_damage = int(base * (1.5 ** level))
 
     BASE_WAVE_SIZE = 6
@@ -390,18 +423,18 @@ def game_screen(screen, assets):
 
         spawn_count = min(missing_enemies, random.randint(1, MAX_SPAWN_BATCH))
         for _ in range(spawn_count):
-            enemies.append(_spawn_enemy(map_width, map_height, assets, now - game_start_ms))
+            enemies.append(_spawn_enemy(map_width, map_height, assets, now - game_start_ms, post_boss=(boss_defeated_ms is not None)))
 
         next_spawn_ms = now + current_spawn_interval(now)
 
     def kill_enemy(enemy):
         nonlocal boss_defeated_ms, next_spawn_ms
 
-        if enemy.kind in ('mago', ENEMY_MAGO_EVO):
+        if enemy.kind in ('mago', ENEMY_MAGO_EVO, 'mago_space'):
             death_sound = SFX_MAGE_DEATH
         elif enemy.kind == ENEMY_MINOTAURO:
             death_sound = SFX_MINOTAUR_DEATH
-        elif enemy.kind in ('lobisomem', ENEMY_LOBISOMEM_EVO, ENEMY_LEAO, ENEMY_LEAO_EVO):
+        elif enemy.kind in ('lobisomem', ENEMY_LOBISOMEM_EVO, ENEMY_LEAO, ENEMY_LEAO_EVO, 'lobisomem_space', 'leao_space'):
             death_sound = SFX_MONSTER_DEATH
         else:
             death_sound = SFX_ENEMY_DEATH
@@ -451,6 +484,20 @@ def game_screen(screen, assets):
                 if event.key == pygame.K_RETURN:
                     state = QUIT
                     running = False
+                if event.key == pygame.K_F1:  # pula para fase espacial
+                    transition_done = True
+                    transition_cap = None
+                    current_background = background_fogo
+                    enemies.clear()
+                    boss_spawned = True
+                    boss_defeated_ms = pygame.time.get_ticks()
+                if event.key == pygame.K_F2:  # pula para fase de fogo
+                    transition_done = False
+                    transition_cap = None
+                    current_background = background_arena
+                    enemies.clear()
+                    boss_spawned = False
+                    game_start_ms = pygame.time.get_ticks() - EVO_SPAWN_START_MS
 
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -461,13 +508,17 @@ def game_screen(screen, assets):
                     target_x = player.x + (mouse_pos[0] - center_screen[0])
                     target_y = player.y + (mouse_pos[1] - center_screen[1])
 
+                    _arco_lvl = weapon_upgrades.get('Arco', 0)
+                    _arrow_img = (assets['arrow_space'] if _arco_lvl >= 2
+                                  else assets['arrow_fire'] if _arco_lvl == 1
+                                  else assets['arrow'])
                     arrows.append(
                         Arrow(
                             player.x,
                             player.y,
                             target_x,
                             target_y,
-                            assets['arrow_fire'] if weapon_upgrades.get('Arco', 0) > 0 else assets['arrow'],
+                            _arrow_img,
                             speed=18,
                             damage=player.weapon_damage
                         )
@@ -535,7 +586,7 @@ def game_screen(screen, assets):
                 w = WEAPON_ORDER[shop_upgrade_pressed]
                 if w not in owned_weapons:
                     message = f'Compre {w} primeiro!'
-                elif weapon_upgrades[w] >= 1:
+                elif weapon_upgrades[w] >= 2:
                     message = f'{w} ja esta no nivel maximo!'
                 elif player.coins >= WEAPON_UPGRADE_PRICE:
                     player.coins -= WEAPON_UPGRADE_PRICE
@@ -586,7 +637,7 @@ def game_screen(screen, assets):
                 now = pygame.time.get_ticks()
                 if enemy.kind == ENEMY_MINOTAURO:
                     contact_cooldown = MINOTAURO_DAMAGE_COOLDOWN_MS
-                elif enemy.kind in ('lobisomem', ENEMY_LOBISOMEM_EVO, ENEMY_LEAO, ENEMY_LEAO_EVO):
+                elif enemy.kind in ('lobisomem', ENEMY_LOBISOMEM_EVO, ENEMY_LEAO, ENEMY_LEAO_EVO, 'lobisomem_space', 'leao_space'):
                     contact_cooldown = LOBISOMEM_DAMAGE_COOLDOWN_MS
                 else:
                     contact_cooldown = CONTACT_DAMAGE_COOLDOWN_MS
@@ -638,6 +689,9 @@ def game_screen(screen, assets):
         if not transition_done and not transition_cap and pygame.time.get_ticks() - game_start_ms >= EVO_SPAWN_START_MS:
             transition_cap = cv2.VideoCapture(assets[VIDEO_TRANSICAO])
 
+        if transition_done and not transition_done_alien and not transition_cap_alien and boss_defeated_ms is not None:
+            transition_cap_alien = cv2.VideoCapture(assets[VIDEO_TRANSICAO_ALIEN])
+
         maintain_enemy_count()
 
         # Spawn e coleta de medkits
@@ -686,26 +740,37 @@ def game_screen(screen, assets):
         
         # Desenho
         screen.fill((0, 0, 0))
+
+        def _draw_transition_frame(cap):
+            ret, frame = cap.read()
+            if not ret:
+                return False
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            vid_h, vid_w = frame.shape[:2]
+            map_w = int(LARGURA_TELA * 2.5)
+            map_h = int(ALTURA_TELA * 2.5)
+            cx = max(0, int(vcamerax * vid_w / map_w))
+            cy = max(0, int(vcameray * vid_h / map_h))
+            cw = min(int(LARGURA_TELA * vid_w / map_w), vid_w - cx)
+            ch = min(int(ALTURA_TELA * vid_h / map_h), vid_h - cy)
+            cropped = frame[cy:cy + ch, cx:cx + cw]
+            scaled = cv2.resize(cropped, (LARGURA_TELA, ALTURA_TELA))
+            screen.blit(pygame.surfarray.make_surface(scaled.swapaxes(0, 1)), (0, 0))
+            return True
+
         if transition_cap is not None:
-            ret, frame = transition_cap.read()
-            if ret:
-                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                vid_h, vid_w = frame.shape[:2]
-                map_w = int(LARGURA_TELA * 2.5)
-                map_h = int(ALTURA_TELA * 2.5)
-                cx = max(0, int(vcamerax * vid_w / map_w))
-                cy = max(0, int(vcameray * vid_h / map_h))
-                cw = min(int(LARGURA_TELA * vid_w / map_w), vid_w - cx)
-                ch = min(int(ALTURA_TELA * vid_h / map_h), vid_h - cy)
-                cropped = frame[cy:cy + ch, cx:cx + cw]
-                scaled = cv2.resize(cropped, (LARGURA_TELA, ALTURA_TELA))
-                frame_surf = pygame.surfarray.make_surface(scaled.swapaxes(0, 1))
-                screen.blit(frame_surf, (0, 0))
-            else:
+            if not _draw_transition_frame(transition_cap):
                 transition_cap.release()
                 transition_cap = None
                 transition_done = True
                 current_background = background_fogo
+                screen.blit(current_background, (-vcamerax, -vcameray))
+        elif transition_cap_alien is not None:
+            if not _draw_transition_frame(transition_cap_alien):
+                transition_cap_alien.release()
+                transition_cap_alien = None
+                transition_done_alien = True
+                current_background = background_alien
                 screen.blit(current_background, (-vcamerax, -vcameray))
         else:
             screen.blit(current_background, (-vcamerax, -vcameray))
@@ -732,9 +797,16 @@ def game_screen(screen, assets):
             WEAPON_ORDER = ['Arco', 'Cajado', 'Espada']
             for i, w in enumerate(WEAPON_ORDER):
                 if w in owned_weapons:
-                    upgraded = weapon_upgrades[w] >= 1
-                    status = 'MAX' if upgraded else f'Upgradar: {WEAPON_UPGRADE_PRICE} moedas'
-                    cor = (180, 180, 180) if upgraded else (255, 220, 80)
+                    lvl = weapon_upgrades[w]
+                    if lvl >= 2:
+                        status = 'MAX (Espacial)'
+                        cor = (120, 180, 255)
+                    elif lvl == 1:
+                        status = f'Espacial: {WEAPON_UPGRADE_PRICE} moedas'
+                        cor = (255, 220, 80)
+                    else:
+                        status = f'Upgradar: {WEAPON_UPGRADE_PRICE} moedas'
+                        cor = (255, 255, 255)
                 else:
                     status = f'Comprar: {WEAPON_BUY_PRICES[w]} moedas'
                     cor = (255, 255, 255)

@@ -15,7 +15,9 @@ MUSICA_MIDGAME = 'musica_midgame'
 HOVER_SAIR = 'hover_sair'
 ARENA_COLISEU = 'Arena_Coliseu'
 ARENA_FOGO = 'Arena_Fogo'
+ARENA_ALIEN = 'Arena_Alien'
 VIDEO_TRANSICAO = 'video_transicao'
+VIDEO_TRANSICAO_ALIEN = 'video_transicao_alien'
 MEDKIT = 'medkit'
 
 WEAPON_CABIN = 'weapon_cabin'
@@ -83,6 +85,10 @@ def load_assets():
     background_fogo = pygame.image.load(path.join(IMG_DIR, 'Arena_Fogo.jpeg')).convert_alpha()
     assets[ARENA_FOGO] = pygame.transform.smoothscale(background_fogo, (int(LARGURA_TELA * 2.5), int(ALTURA_TELA * 2.5)))
     assets[VIDEO_TRANSICAO] = path.join(IMG_DIR, 'ColiseuPegandoFogo.mp4')
+
+    background_alien = pygame.image.load(path.join(IMG_DIR, 'Arena_Alien.jpeg')).convert_alpha()
+    assets[ARENA_ALIEN] = pygame.transform.smoothscale(background_alien, (int(LARGURA_TELA * 2.5), int(ALTURA_TELA * 2.5)))
+    assets[VIDEO_TRANSICAO_ALIEN] = path.join(IMG_DIR, 'Arena_Alien_Video.mp4')
 
     assets['player_sheet'] = pygame.image.load(path.join(IMG_DIR, 'PersonagemRomano32bit.png')).convert_alpha()
     assets[ENEMY_ESQUELETO] = pygame.image.load(path.join(IMG_DIR, 'Esqueleto32bit.png')).convert_alpha()
@@ -159,6 +165,14 @@ def load_assets():
     assets['mago_evo_left'] = mago_evo_left
     assets['mago_evo_right'] = mago_evo_right
 
+    mago_space_left, mago_space_right = _split_mage_sheet('Mago32bitV2.png')
+    assets['mago_space_left'] = mago_space_left
+    assets['mago_space_right'] = mago_space_right
+
+    assets['esqueleto_space_sheet'] = pygame.image.load(path.join(IMG_DIR, 'Esqueleto32bitV2.png')).convert_alpha()
+    assets['lobisomem_space_sheet'] = pygame.image.load(path.join(IMG_DIR, 'Lobisomem32bitV2.png')).convert_alpha()
+    assets['leao_space_sheet']      = pygame.image.load(path.join(IMG_DIR, 'Leão32bitV2.png')).convert_alpha()
+
     # As armas no mapa e na mao do personagem precisam ficar maiores para serem visiveis.
     assets[WEAPON_ESPADA] = pygame.image.load(path.join(IMG_DIR, 'Espada32bit.png')).convert_alpha()
     assets[WEAPON_ARCO] = pygame.image.load(path.join(IMG_DIR, 'Arco32bit.png')).convert_alpha()
@@ -182,6 +196,27 @@ def load_assets():
         (48, 48)
     )
 
+    _SPACE_TINT = (65, 120, 255)
+
+    _espada_space = assets[WEAPON_ESPADA].copy()
+    _espada_space.fill((255, 0, 255), special_flags=pygame.BLEND_RGBA_MULT)
+    _espada_space.fill((50, 0, 160), special_flags=pygame.BLEND_ADD)
+    assets['weapon_espada_space'] = _espada_space
+
+    _cajado_space = assets[WEAPON_CAJADO].copy()
+    _cajado_space.fill((255, 0, 255), special_flags=pygame.BLEND_RGBA_MULT)  # zera canal verde
+    _cajado_space.fill((50, 0, 160), special_flags=pygame.BLEND_ADD)         # adiciona roxo/azul
+    assets['weapon_cajado_space'] = _cajado_space
+
+    _arco_space = assets[WEAPON_ARCO].copy()
+    _arco_space.fill(_SPACE_TINT, special_flags=pygame.BLEND_RGBA_MULT)
+    assets['weapon_arco_space'] = _arco_space
+
+    assets['arrow_space'] = pygame.transform.smoothscale(
+        pygame.image.load(path.join(IMG_DIR, 'FlechaV2.png')).convert_alpha(),
+        (48, 48)
+    )
+
     def load_spell(name):
         img = pygame.image.load(path.join(IMG_DIR, name)).convert_alpha()
         return pygame.transform.smoothscale(img, (180, 180))
@@ -197,6 +232,12 @@ def load_assets():
     assets['fire_spell_3'] = load_spell('Fire_0332bit.png')
     assets['fire_spell_4'] = load_spell('Fire_0432bit.png')
     assets['fire_spell_5'] = load_spell('Fire_0532bit.png')
+
+    for i in range(1, 6):
+        _s = assets[f'fire_spell_{i}'].copy()
+        _s.fill((180, 0, 255), special_flags=pygame.BLEND_RGBA_MULT)
+        _s.fill((0, 0, 100), special_flags=pygame.BLEND_ADD)
+        assets[f'space_spell_{i}'] = _s
 
     # ----- Sons
     music_path = path.join(SND_DIR, 'Musica-Epica.mp3')

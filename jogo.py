@@ -24,8 +24,8 @@ while state != QUIT:
         state = init_screen(window, assets)
     if state == GAME:
         state = game_screen(window,assets)
-        #state = game_screen(window, assets)
-#      else:
+            #state = game_screen(window, assets)
+    #      else:
 #      state = game_over(window)
 #          state = QUIT
 
