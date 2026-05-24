@@ -88,6 +88,7 @@ class Player:
         self.mapwidth = map_width
         self.mapheight = map_height
         self.speed = 5
+        self.score = 0
         self.dx = 0
         self.dy = 0
         self.sheet = assets['player_sheet']
@@ -718,7 +719,12 @@ class MageSpell:
         self.total_distance = self.direction.length()
         if self.total_distance == 0:
             self.total_distance = 1
+
         self.direction = self.direction.normalize()
+
+        # ângulo do movimento
+        # Se a sua imagem "aponta" para outra direção, ajuste o offset aqui
+        self.angle = math.degrees(math.atan2(-self.direction.y, self.direction.x))
 
         self.traveled = 0.0
         self.frame_index = 0
@@ -732,7 +738,7 @@ class MageSpell:
         self.traveled += self.speed
 
         progress = min(1.0, self.traveled / self.total_distance)
-        self.frame_index = min(4, int(progress * 5))
+        self.frame_index = min(len(self.frames) - 1, int(progress * len(self.frames)))
 
         spell_rect = self.rect()
         player_rect = pygame.Rect(player.x - 18, player.y - 34, 36, 68)
@@ -748,14 +754,15 @@ class MageSpell:
         return False
 
     def rect(self):
-        img = self.frames[self.frame_index]
+        img = pygame.transform.rotate(self.frames[self.frame_index], self.angle)
         return img.get_rect(center=(int(self.pos.x), int(self.pos.y)))
 
     def draw(self, screen, cam_x, cam_y):
         if not self.alive:
             return
-        img = self.frames[self.frame_index]
-        r = self.rect()
+
+        img = pygame.transform.rotate(self.frames[self.frame_index], self.angle)
+        r = img.get_rect(center=(int(self.pos.x), int(self.pos.y)))
         screen.blit(img, (r.x - cam_x, r.y - cam_y))
 
 

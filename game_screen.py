@@ -91,11 +91,11 @@ def _spawn_enemy(map_width, map_height, assets, player_x, player_y):
         lado = random.choice(['left', 'right', 'up', 'down'])
 
         if lado == 'left':
-            x = centro_x - raio - 100
+            x = centro_x - raio - 50
             y = random.randint(centro_y - 250, centro_y + 250)
             side = 'left'
         elif lado == 'right':
-            x = centro_x + raio + 100
+            x = centro_x + raio + 50
             y = random.randint(centro_y - 250, centro_y + 250)
             side = 'right'
         elif lado == 'up':
@@ -328,6 +328,7 @@ def game_screen(screen, assets):
         else:
             assets[death_sound].play()
         player.coins += enemy.coins_reward
+        player.score += enemy.coins_reward
         enemies.remove(enemy)
         contact_damage_cooldowns.pop(id(enemy), None)
         if enemy.kind == ENEMY_MINOTAURO:
@@ -355,6 +356,11 @@ def game_screen(screen, assets):
                 # Compra da arma
                 if event.key == pygame.K_e:
                     buy_requested = True
+                
+                if event.key == pygame.K_RETURN:
+                    state = QUIT
+                    running = False
+
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 mouse_pos = pygame.mouse.get_pos()
@@ -604,20 +610,6 @@ def game_screen(screen, assets):
         cy = ALTURA_TELA // 2 - player_frame.get_height() // 2
        
 
-        # Desenha a arma equipada na mao do personagem.
-        '''if player.weapon_image:
-            weapon_img = pygame.transform.smoothscale(player.weapon_image, (92, 92))
-            if player.direction == 'right':
-                screen.blit(weapon_img, (cx + 26, cy + 18))
-            elif player.direction == 'left':
-                weapon_img = pygame.transform.flip(weapon_img, True, False)
-                screen.blit(weapon_img, (cx - 40, cy + 18))
-            elif player.direction == 'up':
-                weapon_img = pygame.transform.rotate(weapon_img, 90)
-                screen.blit(weapon_img, (cx + 10, cy - 30))
-            else:
-                weapon_img = pygame.transform.rotate(weapon_img, -90)
-                screen.blit(weapon_img, (cx + 10, cy + 32))'''
         if player.weapon_image:
             weapon_img = pygame.transform.smoothscale(
                 player.weapon_image,
@@ -639,13 +631,14 @@ def game_screen(screen, assets):
             screen.blit(player_frame, (cx, cy))
 
         # HUD
-        hud = pygame.Surface((460, 155), pygame.SRCALPHA)
+        hud = pygame.Surface((460, 190), pygame.SRCALPHA)
         hud.fill((0, 0, 0, 140))
         screen.blit(hud, (18, 18))
         _draw_text(screen, font_mid, f'Vida: {player.health}/{player.max_health}', 30, 28)
-        _draw_text(screen, font_mid, f'Moedas: {player.coins}', 30, 62)
-        _draw_text(screen, font_small, f'Arma: {player.weapon}', 30, 100)
-        _draw_text(screen, font_small, 'Mover: WASD | Atacar: J ou ESPACO', 30, 128)
+        _draw_text(screen, font_mid, f'Moedas: {player.coins}', 30, 62)     
+        _draw_text(screen, font_mid, f'Pontos: {player.score}', 30, 96)
+        _draw_text(screen, font_small, f'Arma: {player.weapon}', 30, 135)
+        _draw_text(screen, font_small, 'Mover: WASD | Atacar: J ou ESPACO', 30, 163)
 
         if message_timer > pygame.time.get_ticks():
             msg = font_mid.render(message, True, (255, 240, 120))
