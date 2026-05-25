@@ -667,7 +667,7 @@ class Mago:
         self.max_health = 4
         self.hits_taken = 0
         self.hits_to_die_by_weapon = {
-            'Punhos': 3,
+            'Punhos': 4,
             'Cajado': 2,
             'Espada': 1,
         }
