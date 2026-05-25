@@ -562,13 +562,13 @@ class LeaoEvo(Enemy):
 class Minotauro:
     KIND = ENEMY_MINOTAURO
     HITS_TO_DIE_BY_WEAPON = {
-        'Punhos': 60,
-        'Cajado': 30,
-        'Espada': 20,
+        'Punhos': 180,
+        'Cajado': 90,
+        'Espada': 60,
     }
-    DAMAGE = 20
+    DAMAGE = 30
     COINS_RANGE = (6, 12)
-    SPEED_RANGE = (1, 2)
+    SPEED_RANGE = (4, 8)
     SCALE = 4.0
     FRAME_SPEED = 0.10
     FRAME_COLUMNS = 24
@@ -599,7 +599,7 @@ class Minotauro:
 
         self.direction = 'down'
         self.frame_timer = 0
-        self.max_health = 12
+        self.max_health = 36
         self.health = self.max_health
         self.hits_taken = 0
         self.damage = self.DAMAGE
@@ -881,7 +881,7 @@ class MageSpell:
         player_rect = pygame.Rect(player.x - 18, player.y - 34, 36, 68)
 
         if spell_rect.colliderect(player_rect):
-            player.take_damage(self.damage)
+            player.take_damage(max(1, self.damage // 2))
             self.alive = False
             return True
 
