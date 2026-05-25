@@ -313,7 +313,7 @@ def posiciona_arma(player, player_center_x, player_center_y, weapon_img):
         },
         'Cajado': {
             'parado': {
-                'right':      ( 25,   2,  65), 'left':      ( 5,  -1, 225), 'up':      ( 40,  12, 135), 'down':      (-20,  12,   0),
+                'right':      ( 25,   2,  65), 'left':      ( 5,  -1, 225), 'up':      ( 23,  12, 135), 'down':      (-20,  12,   0),
                 'up_right':   ( 25,   6,  90), 'up_left':   ( 36,   2, 180), 'down_right': (  3,   9,  45), 'down_left': (  -25,   2,  -90),
             },
             'atacando': {
