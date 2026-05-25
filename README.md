@@ -18,7 +18,8 @@ Judáh Eliezer Levy
 Rafael Novak Alberto
 Luis Fernando Luz
 
-Link do Vídeo Apresentando o Jogo: [text](https://youtu.be/y1V23r4ElmA)
+Link do Vídeo Apresentando o Jogo: https://youtu.be/y1V23r4ElmA [text](https://youtu.be/y1V23r4ElmA) 
+
 Como rodar o jogo
 1. Instalar as bibliotecas necessárias
 
