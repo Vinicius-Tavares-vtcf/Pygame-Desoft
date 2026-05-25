@@ -755,7 +755,7 @@ class MagoEvo(Mago):
             assets['fire_spell_4'],
             assets['fire_spell_5'],
         ]
-        return MageSpell(self.x, self.y, end.x, end.y, frames, speed=13, damage=4)
+        return MageSpell(self.x, self.y, end.x, end.y, frames, speed=13, damage=4, damage_divisor=1.5)
 
 
 class EsqueletoSpace(Enemy):
@@ -827,7 +827,7 @@ class MagoSpace(MagoEvo):
         center = pygame.Vector2(arena_center_x, arena_center_y)
         end = center * 2 - start
         frames = [assets[f'space_spell_{i}'] for i in range(1, 6)]
-        return MageSpell(self.x, self.y, end.x, end.y, frames, speed=15, damage=5)
+        return MageSpell(self.x, self.y, end.x, end.y, frames, speed=15, damage=5, full_damage=True)
 
 
 class WeaponPickup:
@@ -848,7 +848,18 @@ class WeaponPickup:
         screen.blit(self.image, (sx, sy))
 
 class MageSpell:
-    def __init__(self, start_x, start_y, end_x, end_y, frames, speed=8, damage=2):
+    def __init__(
+        self,
+        start_x,
+        start_y,
+        end_x,
+        end_y,
+        frames,
+        speed=8,
+        damage=2,
+        full_damage=False,
+        damage_divisor=2,
+    ):
         self.pos = pygame.Vector2(start_x, start_y)
         self.start = pygame.Vector2(start_x, start_y)
         self.end = pygame.Vector2(end_x, end_y)
@@ -856,6 +867,8 @@ class MageSpell:
         self.frames = frames
         self.speed = speed
         self.damage = damage
+        self.full_damage = full_damage
+        self.damage_divisor = damage_divisor
 
         self.direction = self.end - self.start
         self.total_distance = self.direction.length()
@@ -881,7 +894,8 @@ class MageSpell:
         player_rect = pygame.Rect(player.x - 18, player.y - 34, 36, 68)
 
         if spell_rect.colliderect(player_rect):
-            player.take_damage(max(1, self.damage // 2))
+            damage = self.damage if self.full_damage else max(1, round(self.damage / self.damage_divisor))
+            player.take_damage(damage)
             self.alive = False
             return True
 
