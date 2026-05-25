@@ -5,7 +5,7 @@ from os import path
 from config import *
 from assets_loader import *
 from sprites import *
-from ranking import save_score, sorted_ranking
+from ranking import save_score
 
 spells = []
 arrows = []
@@ -18,7 +18,6 @@ def _play_sound(sound, repeats=1):
 def _draw_text(screen, font, text, x, y, color=(255, 255, 255)):
     surf = font.render(text, True, color)
     screen.blit(surf, (x, y))
-
 
 
 def _shrink_rect(rect, scale_x, scale_y):
@@ -424,6 +423,7 @@ def game_screen(screen, assets, player_name='Jogador'):
     max_upgrade_unlock_ms = max(0, boss_spawn_elapsed_ms - MAX_UPGRADE_UNLOCK_BEFORE_BOSS_MS)
     MEDKIT_SPAWN_INTERVAL_MS = 20_000  # novo medkit a cada 20s
     MEDKIT_MAX = 3                      # máximo simultâneo
+    MEDKIT_PHASE_2_MAX = 4
     MEDKIT_HEAL = 40
 
     game_start_ms = pygame.time.get_ticks()
@@ -490,8 +490,13 @@ def game_screen(screen, assets, player_name='Jogador'):
         if boss_defeated_ms is not None:
             return MEDKIT_SPAWN_INTERVAL_MS // 3
         if transition_done:
-            return MEDKIT_SPAWN_INTERVAL_MS // 2
+            return MEDKIT_SPAWN_INTERVAL_MS // 3
         return MEDKIT_SPAWN_INTERVAL_MS
+
+    def current_medkit_max():
+        if transition_done and boss_defeated_ms is None:
+            return MEDKIT_PHASE_2_MAX
+        return MEDKIT_MAX
 
     def current_medkit_heal():
         if boss_defeated_ms is not None:
@@ -825,7 +830,7 @@ def game_screen(screen, assets, player_name='Jogador'):
 
         # Spawn e coleta de medkits
         now_ms = pygame.time.get_ticks()
-        if now_ms >= next_medkit_ms and len(medkit_spawns) < MEDKIT_MAX:
+        if now_ms >= next_medkit_ms and len(medkit_spawns) < current_medkit_max():
             angle = random.uniform(0, 6.28318)
             radius = random.uniform(150, 580)
             vec = pygame.math.Vector2(1, 0).rotate_rad(angle)
