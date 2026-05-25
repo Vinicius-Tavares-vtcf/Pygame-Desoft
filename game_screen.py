@@ -399,7 +399,7 @@ def game_screen(screen, assets, player_name='Jogador'):
     cabin_interact_rect = pygame.Rect(0, 0, 160, 160)
     cabin_interact_rect.center = (CABIN_X, CABIN_Y)
 
-    DEBUG_FREE_SHOP = True # remover após testes
+    DEBUG_FREE_SHOP = False # remover após testes
     WEAPON_BUY_PRICES  = {'Arco': 0, 'Cajado': 0, 'Espada': 0} if DEBUG_FREE_SHOP else {'Arco': 20, 'Cajado': 30, 'Espada': 40}
     WEAPON_UPGRADE_PRICE = 0 if DEBUG_FREE_SHOP else 50
     WEAPON_BASE_DAMAGE   = {'Espada': 4, 'Arco': 2, 'Cajado': 3, 'Punhos': 1}

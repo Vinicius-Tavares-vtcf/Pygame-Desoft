@@ -3,6 +3,7 @@ from os import path
 
 
 RANKING_FILE = path.join(path.dirname(__file__), 'ranking.json')
+MAX_RANKING_ENTRIES = 10
 
 
 def load_ranking():
@@ -35,6 +36,7 @@ def save_score(player_name, score):
     ranking = load_ranking()
     name = str(player_name).strip() or 'Jogador'
     ranking.append({'name': name[:18], 'score': int(score)})
+    ranking = sorted(ranking, key=lambda entry: entry['score'], reverse=True)[:MAX_RANKING_ENTRIES]
 
     with open(RANKING_FILE, 'w', encoding='utf-8') as file:
         json.dump(ranking, file, ensure_ascii=False, indent=2)
