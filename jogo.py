@@ -26,8 +26,11 @@ while state != QUIT:
         state, player_name = init_screen(window, assets, player_name)
     if state == GAME:
         state = game_screen(window, assets, player_name)
+    if isinstance(state, tuple) and state[0] == GAME_OVER:
+        _, player_name, score = state
+        state = game_over(window, assets, player_name, score)
     if state == GAME_OVER:
-        state = game_over(window, assets)
+        state = game_over(window, assets, player_name, 0)
 
 # ===== Finalização =====
 pygame.quit()  # Função do PyGame que finaliza os recursos utilizados

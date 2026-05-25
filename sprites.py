@@ -605,7 +605,7 @@ class Minotauro:
         self.damage = self.DAMAGE
         self.coins_reward = random.randint(*self.COINS_RANGE)
         self.hit_flash = 0
-        self.speed = random.randint(*self.SPEED_RANGE)
+        self.speed = random.randint(*self.SPEED_RANGE) * 0.8
 
     def rect(self):
         frame = self.get_current_frame()

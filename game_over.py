@@ -4,7 +4,7 @@ from config import *
 from ranking import sorted_ranking
 
 
-def game_over(screen, assets):
+def game_over(screen, assets, player_name='Jogador', score=0):
     clock = pygame.time.Clock()
 
     background = screen.copy()
@@ -16,9 +16,11 @@ def game_over(screen, assets):
 
     text      = defeat_font.render('Você perdeu', True, (255, 235, 220))
     text_rect = text.get_rect(center=(LARGURA_TELA // 2, 180))
+    score_text = ranking_font.render(f'{player_name}: {score} pontos', True, (255, 235, 220))
+    score_rect = score_text.get_rect(center=(LARGURA_TELA // 2, 245))
 
     ranking_title      = ranking_font.render('RANKING', True, (255, 210, 100))
-    ranking_title_rect = ranking_title.get_rect(center=(LARGURA_TELA // 2, 300))
+    ranking_title_rect = ranking_title.get_rect(center=(LARGURA_TELA // 2, 330))
 
     ranking_entries = sorted_ranking(limit=5)
 
@@ -61,12 +63,13 @@ def game_over(screen, assets):
         screen.blit(background, (0, 0))
         screen.blit(overlay, (0, 0))
         screen.blit(text, text_rect)
+        screen.blit(score_text, score_rect)
         screen.blit(ranking_title, ranking_title_rect)
 
         for i, entry in enumerate(ranking_entries):
             cor  = (255, 215, 0) if i == 0 else (255, 235, 220)
             line = ranking_font.render(f'{i + 1}.  {entry["name"]:<18}  {entry["score"]}', True, cor)
-            screen.blit(line, line.get_rect(center=(LARGURA_TELA // 2, 370 + i * 70)))
+            screen.blit(line, line.get_rect(center=(LARGURA_TELA // 2, 400 + i * 70)))
 
         if show_options:
             if is_hover_play:

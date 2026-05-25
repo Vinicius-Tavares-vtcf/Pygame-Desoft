@@ -536,6 +536,7 @@ def game_screen(screen, assets, player_name='Jogador'):
         boss_spawn_ms = game_start_ms + boss_spawn_elapsed_ms
         if not boss_spawned and now >= boss_spawn_ms:
             enemies.append(_spawn_boss(map_width, map_height, assets))
+            player.health = player.max_health
             _play_sound(assets[SFX_MINOTAUR_ENTRY], repeats=5)
             boss_spawned = True
             return
@@ -1033,7 +1034,7 @@ def game_screen(screen, assets, player_name='Jogador'):
 
         if player.health <= 0:
             save_score(player_name, player.score)
-            state = GAME_OVER
+            state = (GAME_OVER, player_name, player.score)
             running = False
 
         pygame.display.flip()
