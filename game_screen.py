@@ -832,7 +832,13 @@ def game_screen(screen, assets, player_name='Jogador'):
                 last_contact_damage = contact_damage_cooldowns.get(enemy_key, -contact_cooldown)
 
                 if enemy.damage > 0 and now - last_contact_damage >= contact_cooldown:
-                    player.take_damage(max(1, enemy.damage // 2))
+                    if enemy.kind.endswith('_space'):
+                        damage = enemy.damage
+                    elif enemy.kind.endswith('_evo'):
+                        damage = max(1, round(enemy.damage / 1.5))
+                    else:
+                        damage = max(1, enemy.damage // 2)
+                    player.take_damage(damage)
                     if enemy.kind == ENEMY_MINOTAURO:
                         damage_sound = SFX_MINOTAUR_ATTACK
                     elif enemy.kind in ('lobisomem', ENEMY_LOBISOMEM_EVO, ENEMY_LEAO, ENEMY_LEAO_EVO):
