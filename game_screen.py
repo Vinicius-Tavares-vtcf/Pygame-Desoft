@@ -165,11 +165,12 @@ def _separate_characters(first, second, first_rect, second_rect, move_first=True
         second.y -= push * second_share
 
 
-EVO_SPAWN_START_MS = 90_000  # 1:30
+EVO_SPAWN_START_MS = 120_000  # 2:00
+SECOND_PHASE_DURATION_MS = 120_000  # 2:00
 PHASE_1_MS = 15_000           # 0-15s:  só esqueleto
 PHASE_2_MS = 30_000           # 15-30s: esqueleto + lobisomem
 PHASE_3_MS = 45_000           # 30-45s: + mago
-# 45s-1:30:                             + leao (pool completo)
+# 45s-2:00:                             + leao (pool completo)
 
 def _choose_enemy_type(enemy_types, weights, allow_mago=True):
     if allow_mago:
@@ -378,8 +379,12 @@ def game_screen(screen, assets, player_name='Jogador'):
     cabin_interact_rect.center = (CABIN_X, CABIN_Y)
 
     DEBUG_FREE_SHOP = False # remover após testes
-    WEAPON_BUY_PRICES  = {'Arco': 0, 'Cajado': 0, 'Espada': 0} if DEBUG_FREE_SHOP else {'Arco': 20, 'Cajado': 30, 'Espada': 40}
-    WEAPON_UPGRADE_PRICE = 0 if DEBUG_FREE_SHOP else 50
+    WEAPON_BUY_PRICES  = {'Arco': 0, 'Cajado': 0, 'Espada': 0} if DEBUG_FREE_SHOP else {'Arco': 70, 'Cajado': 60, 'Espada': 80}
+    WEAPON_UPGRADE_PRICES = (
+        {'Arco': {1: 0, 2: 0}, 'Cajado': {1: 0, 2: 0}, 'Espada': {1: 0, 2: 0}}
+        if DEBUG_FREE_SHOP else
+        {'Arco': {1: 100, 2: 220}, 'Cajado': {1: 80, 2: 140}, 'Espada': {1: 120, 2: 180}}
+    )
     WEAPON_BASE_DAMAGE   = {'Espada': 4, 'Arco': 2, 'Cajado': 3, 'Punhos': 1}
     WEAPON_BASE_RANGE = {'Espada': 66, 'Cajado': 80}
     WEAPON_SHEETS     = {'Espada': assets[WEAPON_ESPADA], 'Arco': assets[WEAPON_ARCO], 'Cajado': assets[WEAPON_CAJADO]}
@@ -399,7 +404,7 @@ def game_screen(screen, assets, player_name='Jogador'):
     def upgraded_weapon_range(weapon_name):
         level = min(weapon_upgrades.get(weapon_name, 0), 2)
         if weapon_name == 'Espada':
-            multipliers = (1, 1.5, 4)
+            multipliers = (1, 1.5, 2)
             return int(WEAPON_BASE_RANGE[weapon_name] * multipliers[level])
 
         multipliers = (1, 1.5, 2)
@@ -407,6 +412,9 @@ def game_screen(screen, assets, player_name='Jogador'):
 
     def bow_damage():
         return upgraded_weapon_damage('Arco')
+
+    def upgrade_price(weapon_name, next_level):
+        return WEAPON_UPGRADE_PRICES[weapon_name][next_level]
 
     def shoot_arrow(mouse_pos):
         center_screen = (LARGURA_TELA // 2, ALTURA_TELA // 2)
@@ -475,18 +483,13 @@ def game_screen(screen, assets, player_name='Jogador'):
     SPAWN_INTERVAL_MS = 1_500
     FAST_SPAWN_START_MS = 150_000
     FAST_SPAWN_INTERVAL_MS = 500
-    BOSS_SPAWN_DELAY_AFTER_MAX_WAVE_MS = 15_000
     SPECIAL_UPGRADE_UNLOCK_MS = 70_000
     MAX_UPGRADE_UNLOCK_BEFORE_BOSS_MS = 20_000
     POST_BOSS_RESUME_DELAY_MS = 10_000
-    POST_BOSS_BASE_WAVE_SIZE = 20
-    POST_BOSS_GROWTH_INTERVAL_MS = 10_000
+    POST_BOSS_BASE_WAVE_SIZE = 16
+    POST_BOSS_GROWTH_INTERVAL_MS = 15_000
     MAX_MAGOS_NA_ARENA = 8
-    max_wave_reached_ms = (
-        WAVE_FIRST_GROWTH_MS
-        + ((MAX_WAVE_SIZE - BASE_WAVE_SIZE) // WAVE_GROWTH_AMOUNT - 1) * WAVE_GROWTH_INTERVAL_MS
-    )
-    boss_spawn_elapsed_ms = max_wave_reached_ms + BOSS_SPAWN_DELAY_AFTER_MAX_WAVE_MS
+    boss_spawn_elapsed_ms = EVO_SPAWN_START_MS + SECOND_PHASE_DURATION_MS
     max_upgrade_unlock_ms = max(0, boss_spawn_elapsed_ms - MAX_UPGRADE_UNLOCK_BEFORE_BOSS_MS)
     MEDKIT_SPAWN_INTERVAL_MS = 20_000  # novo medkit a cada 20s
     MEDKIT_MAX = 3                      # máximo simultâneo
@@ -525,8 +528,8 @@ def game_screen(screen, assets, player_name='Jogador'):
     LOBISOMEM_DAMAGE_COOLDOWN_MS = 1500
     MINOTAURO_DAMAGE_COOLDOWN_MS = 3000
 
-    WAVE_FREEZE_START_MS = 90_000   # 1:30 - congela wave
-    WAVE_FREEZE_END_MS   = 210_000  # 3:30 - retoma crescimento
+    WAVE_FREEZE_START_MS = EVO_SPAWN_START_MS
+    WAVE_FREEZE_END_MS   = boss_spawn_elapsed_ms
 
     def current_wave_size(now):
         if boss_defeated_ms is not None:
@@ -594,13 +597,8 @@ def game_screen(screen, assets, player_name='Jogador'):
         nonlocal next_spawn_ms, boss_spawned
 
         now = pygame.time.get_ticks()
-        boss_spawn_ms = game_start_ms + max_wave_reached_ms + BOSS_SPAWN_DELAY_AFTER_MAX_WAVE_MS
+        boss_spawn_ms = game_start_ms + boss_spawn_elapsed_ms
         if not boss_spawned and now >= boss_spawn_ms:
-            enemies.clear()
-            spells.clear()
-            arrows.clear()
-            contact_damage_cooldowns.clear()
-            attack_hit_enemies.clear()
             enemies.append(_spawn_boss(map_width, map_height, assets))
             _play_sound(assets[SFX_MINOTAUR_ENTRY], repeats=5)
             boss_spawned = True
@@ -781,14 +779,16 @@ def game_screen(screen, assets, player_name='Jogador'):
                     message = f'{w} ja esta no nivel maximo!'
                 elif not upgrade_unlocked(next_level):
                     message = upgrade_lock_message(next_level)
-                elif player.coins >= WEAPON_UPGRADE_PRICE:
-                    player.coins -= WEAPON_UPGRADE_PRICE
-                    weapon_upgrades[w] += 1
-                    if player.weapon == w:
-                        apply_upgrade(w)
-                    message = f'{w} aprimorada!'
                 else:
-                    message = f'Precisa de {WEAPON_UPGRADE_PRICE} moedas!'
+                    price = upgrade_price(w, next_level)
+                    if player.coins >= price:
+                        player.coins -= price
+                        weapon_upgrades[w] += 1
+                        if player.weapon == w:
+                            apply_upgrade(w)
+                        message = f'{w} aprimorada!'
+                    else:
+                        message = f'Precisa de {price} moedas!'
                 message_timer = pygame.time.get_ticks() + 1200
 
         # Atualiza inimigos.
@@ -839,9 +839,9 @@ def game_screen(screen, assets, player_name='Jogador'):
 
                 if enemy.damage > 0 and now - last_contact_damage >= contact_cooldown:
                     if enemy.kind.endswith('_space'):
-                        damage = enemy.damage
+                        damage = max(1, round(enemy.damage * 1.5))
                     elif enemy.kind.endswith('_evo'):
-                        damage = max(1, round(enemy.damage / 1.5))
+                        damage = max(1, round((enemy.damage / 1.5) * 1.5))
                     else:
                         damage = max(1, enemy.damage // 2)
                     player.take_damage(damage)
@@ -1004,10 +1004,10 @@ def game_screen(screen, assets, player_name='Jogador'):
                         status = 'Especial em 1min10s' if lvl == 0 else 'MAX antes do Minotauro'
                         cor = (160, 160, 160)
                     elif lvl == 1:
-                        status = f'MAX: {WEAPON_UPGRADE_PRICE} moedas'
+                        status = f'MAX: {upgrade_price(w, lvl + 1)} moedas'
                         cor = (255, 220, 80)
                     else:
-                        status = f'Especial: {WEAPON_UPGRADE_PRICE} moedas'
+                        status = f'Especial: {upgrade_price(w, lvl + 1)} moedas'
                         cor = (255, 255, 255)
                 else:
                     status = f'Comprar: {WEAPON_BUY_PRICES[w]} moedas'

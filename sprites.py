@@ -755,14 +755,24 @@ class MagoEvo(Mago):
             assets['fire_spell_4'],
             assets['fire_spell_5'],
         ]
-        return MageSpell(self.x, self.y, end.x, end.y, frames, speed=13, damage=4, damage_divisor=1.5)
+        return MageSpell(
+            self.x,
+            self.y,
+            end.x,
+            end.y,
+            frames,
+            speed=13,
+            damage=4,
+            damage_divisor=1.5,
+            damage_multiplier=1.5,
+        )
 
 
 class EsqueletoSpace(Enemy):
     KIND = 'esqueleto_space_sheet'
     HP_RANGE = (3, 3)
     HITS_TO_DIE_BY_WEAPON = {'Punhos': 7, 'Cajado': 4, 'Espada': 3}
-    DAMAGE = 6
+    DAMAGE = 12
     SPEED_RANGE = (5, 9)
     COINS_RANGE = (3, 6)
     ATTACK_RANGE = 130
@@ -778,7 +788,7 @@ class LobisomemSpace(Enemy):
     KIND = 'lobisomem_space_sheet'
     HP_RANGE = (12, 12)
     HITS_TO_DIE_BY_WEAPON = {'Punhos': 14, 'Cajado': 8, 'Espada': 5}
-    DAMAGE = 12
+    DAMAGE = 24
     SPEED_RANGE = (4, 7)
     COINS_RANGE = (5, 9)
     ATTACK_RANGE = 160
@@ -794,7 +804,7 @@ class LeaoSpace(Enemy):
     KIND = 'leao_space_sheet'
     HP_RANGE = (18, 18)
     HITS_TO_DIE_BY_WEAPON = {'Punhos': 20, 'Cajado': 13, 'Espada': 9}
-    DAMAGE = 16
+    DAMAGE = 32
     SPEED_RANGE = (4, 6)
     COINS_RANGE = (10, 18)
     SCALE = 1.8
@@ -827,7 +837,17 @@ class MagoSpace(MagoEvo):
         center = pygame.Vector2(arena_center_x, arena_center_y)
         end = center * 2 - start
         frames = [assets[f'space_spell_{i}'] for i in range(1, 6)]
-        return MageSpell(self.x, self.y, end.x, end.y, frames, speed=15, damage=5, full_damage=True)
+        return MageSpell(
+            self.x,
+            self.y,
+            end.x,
+            end.y,
+            frames,
+            speed=15,
+            damage=10,
+            full_damage=True,
+            damage_multiplier=1.5,
+        )
 
 
 class WeaponPickup:
@@ -859,6 +879,7 @@ class MageSpell:
         damage=2,
         full_damage=False,
         damage_divisor=2,
+        damage_multiplier=1,
     ):
         self.pos = pygame.Vector2(start_x, start_y)
         self.start = pygame.Vector2(start_x, start_y)
@@ -869,6 +890,7 @@ class MageSpell:
         self.damage = damage
         self.full_damage = full_damage
         self.damage_divisor = damage_divisor
+        self.damage_multiplier = damage_multiplier
 
         self.direction = self.end - self.start
         self.total_distance = self.direction.length()
@@ -894,7 +916,8 @@ class MageSpell:
         player_rect = pygame.Rect(player.x - 18, player.y - 34, 36, 68)
 
         if spell_rect.colliderect(player_rect):
-            damage = self.damage if self.full_damage else max(1, round(self.damage / self.damage_divisor))
+            base_damage = self.damage if self.full_damage else self.damage / self.damage_divisor
+            damage = max(1, round(base_damage * self.damage_multiplier))
             player.take_damage(damage)
             self.alive = False
             return True
