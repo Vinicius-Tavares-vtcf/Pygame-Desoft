@@ -5,12 +5,83 @@ from os import path
 from config import *
 from assets_loader import *
 from sprites import *
+from ranking import save_score, sorted_ranking
 
 spells = []
 arrows = []
 def _draw_text(screen, font, text, x, y, color=(255, 255, 255)):
     surf = font.render(text, True, color)
     screen.blit(surf, (x, y))
+
+
+def _show_defeat_screen(screen):
+    clock = pygame.time.Clock()
+    background = screen.copy()
+    overlay = pygame.Surface((LARGURA_TELA, ALTURA_TELA), pygame.SRCALPHA)
+    defeat_font = pygame.font.Font(path.join(FONT_DIR, 'HyliaSerifBeta-Regular.otf'), 96)
+    option_font = pygame.font.Font(path.join(FONT_DIR, 'HyliaSerifBeta-Regular.otf'), 54)
+    text = defeat_font.render('Você perdeu', True, (255, 235, 220))
+    text_rect = text.get_rect(center=(LARGURA_TELA // 2, ALTURA_TELA // 2))
+    options_start_ms = pygame.time.get_ticks() + 5_000
+
+    running = True
+    while running:
+        clock.tick(FPS)
+        now = pygame.time.get_ticks()
+        show_options = now >= options_start_ms
+        mouse_pos = pygame.mouse.get_pos()
+
+        play_again_color = (255, 235, 220)
+        quit_color = (255, 235, 220)
+        play_again_text = option_font.render('Jogar novamente', True, play_again_color)
+        quit_text = option_font.render('Sair', True, quit_color)
+        play_again_rect = play_again_text.get_rect(center=(LARGURA_TELA // 2, ALTURA_TELA // 2 + 115))
+        quit_rect = quit_text.get_rect(center=(LARGURA_TELA // 2, ALTURA_TELA // 2 + 195))
+
+        is_hover_play = show_options and play_again_rect.collidepoint(mouse_pos)
+        is_hover_quit = show_options and quit_rect.collidepoint(mouse_pos)
+
+        if show_options and (is_hover_play or is_hover_quit):
+            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
+        else:
+            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return QUIT
+            if show_options and event.type == pygame.MOUSEBUTTONDOWN:
+                if play_again_rect.collidepoint(event.pos):
+                    pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+                    return INIT
+                if quit_rect.collidepoint(event.pos):
+                    pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+                    return QUIT
+
+        alpha = 135 + int(25 * abs(pygame.math.Vector2(1, 0).rotate(pygame.time.get_ticks() * 0.08).y))
+        overlay.fill((160, 0, 0, alpha))
+        screen.blit(background, (0, 0))
+        screen.blit(overlay, (0, 0))
+        screen.blit(text, text_rect)
+        if show_options:
+            if is_hover_play:
+                play_again_text = option_font.render('Jogar novamente', True, (255, 190, 170))
+                play_again_text = pygame.transform.smoothscale(
+                    play_again_text,
+                    (int(play_again_text.get_width() * 1.03), int(play_again_text.get_height() * 1.03))
+                )
+                play_again_rect = play_again_text.get_rect(center=play_again_rect.center)
+            if is_hover_quit:
+                quit_text = option_font.render('Sair', True, (255, 190, 170))
+                quit_text = pygame.transform.smoothscale(
+                    quit_text,
+                    (int(quit_text.get_width() * 1.03), int(quit_text.get_height() * 1.03))
+                )
+                quit_rect = quit_text.get_rect(center=quit_rect.center)
+            screen.blit(play_again_text, play_again_rect)
+            screen.blit(quit_text, quit_rect)
+        pygame.display.flip()
+
+    return QUIT
 
 
 def _shrink_rect(rect, scale_x, scale_y):
@@ -57,7 +128,13 @@ def _tint_sprite_pixels(frame, tint_color):
 
 def _enemy_collision_rect(enemy):
     if isinstance(enemy, Minotauro):
-        return _shrink_rect(enemy.rect(), 0.26, 0.30)
+        return _shrink_rect(enemy.rect(), 0.58, 0.60)
+    return _shrink_rect(enemy.rect(), 0.45, 0.45)
+
+
+def _enemy_damage_rect(enemy):
+    if isinstance(enemy, Minotauro):
+        return _shrink_rect(enemy.rect(), 1.74, 1.80)
     return _shrink_rect(enemy.rect(), 0.45, 0.45)
 
 
@@ -263,7 +340,7 @@ def posiciona_arma(player, player_center_x, player_center_y, weapon_img):
 
 
 
-def game_screen(screen, assets):
+def game_screen(screen, assets, player_name='Jogador'):
     pygame.mixer.music.load(assets[MUSICA_MIDGAME])
     pygame.mixer.music.set_volume(1.0)
     pygame.mixer.music.play(-1)
@@ -294,10 +371,11 @@ def game_screen(screen, assets):
     cabin_interact_rect = pygame.Rect(0, 0, 160, 160)
     cabin_interact_rect.center = (CABIN_X, CABIN_Y)
 
-    DEBUG_FREE_SHOP = True # remover após testes
+    DEBUG_FREE_SHOP = False # remover após testes
     WEAPON_BUY_PRICES  = {'Arco': 0, 'Cajado': 0, 'Espada': 0} if DEBUG_FREE_SHOP else {'Arco': 20, 'Cajado': 30, 'Espada': 40}
     WEAPON_UPGRADE_PRICE = 0 if DEBUG_FREE_SHOP else 50
     WEAPON_BASE_DAMAGE   = {'Espada': 4, 'Arco': 2, 'Cajado': 3, 'Punhos': 1}
+    WEAPON_BASE_RANGE = {'Espada': 66, 'Cajado': 80}
     WEAPON_SHEETS     = {'Espada': assets[WEAPON_ESPADA], 'Arco': assets[WEAPON_ARCO], 'Cajado': assets[WEAPON_CAJADO]}
     WEAPON_EVO_SHEETS = {'Espada': assets[WEAPON_ESPADA_EVO], 'Arco': assets[WEAPON_ARCO_EVO], 'Cajado': assets[WEAPON_CAJADO_EVO]}
     owned_weapons   = {'Punhos'}
@@ -312,8 +390,14 @@ def game_screen(screen, assets):
         multipliers = (1, 3, 5)
         return WEAPON_BASE_DAMAGE[weapon_name] * multipliers[level]
 
-    def fire_phase_unlocked():
-        return transition_done
+    def upgraded_weapon_range(weapon_name):
+        level = min(weapon_upgrades.get(weapon_name, 0), 2)
+        if weapon_name == 'Espada':
+            multipliers = (1, 1.5, 4)
+            return int(WEAPON_BASE_RANGE[weapon_name] * multipliers[level])
+
+        multipliers = (1, 1.5, 2)
+        return int(WEAPON_BASE_RANGE[weapon_name] * multipliers[level])
 
     def bow_damage():
         return upgraded_weapon_damage('Arco')
@@ -366,6 +450,8 @@ def game_screen(screen, assets):
         else:
             player.equip(weapon_name, WEAPON_SHEETS[weapon_name])
         player.weapon_damage = upgraded_weapon_damage(weapon_name)
+        if weapon_name in WEAPON_BASE_RANGE:
+            player.attack_range = upgraded_weapon_range(weapon_name)
 
     def equip_shop_weapon(weapon_name):
         if weapon_name == 'Arco' and any(w in owned_weapons for w in ('Espada', 'Cajado')):
@@ -384,14 +470,18 @@ def game_screen(screen, assets):
     FAST_SPAWN_START_MS = 150_000
     FAST_SPAWN_INTERVAL_MS = 500
     BOSS_SPAWN_DELAY_AFTER_MAX_WAVE_MS = 15_000
+    SPECIAL_UPGRADE_UNLOCK_MS = 70_000
+    MAX_UPGRADE_UNLOCK_BEFORE_BOSS_MS = 20_000
     POST_BOSS_RESUME_DELAY_MS = 10_000
     POST_BOSS_BASE_WAVE_SIZE = 20
     POST_BOSS_GROWTH_INTERVAL_MS = 10_000
-    MAX_MAGOS_NA_ARENA = 10
+    MAX_MAGOS_NA_ARENA = 8
     max_wave_reached_ms = (
         WAVE_FIRST_GROWTH_MS
         + ((MAX_WAVE_SIZE - BASE_WAVE_SIZE) // WAVE_GROWTH_AMOUNT - 1) * WAVE_GROWTH_INTERVAL_MS
     )
+    boss_spawn_elapsed_ms = max_wave_reached_ms + BOSS_SPAWN_DELAY_AFTER_MAX_WAVE_MS
+    max_upgrade_unlock_ms = max(0, boss_spawn_elapsed_ms - MAX_UPGRADE_UNLOCK_BEFORE_BOSS_MS)
     MEDKIT_SPAWN_INTERVAL_MS = 20_000  # novo medkit a cada 20s
     MEDKIT_MAX = 3                      # máximo simultâneo
     MEDKIT_HEAL = 40
@@ -456,6 +546,35 @@ def game_screen(screen, assets):
             return FAST_SPAWN_INTERVAL_MS
         return SPAWN_INTERVAL_MS
 
+    def current_medkit_spawn_interval():
+        if boss_defeated_ms is not None:
+            return MEDKIT_SPAWN_INTERVAL_MS // 3
+        if transition_done:
+            return MEDKIT_SPAWN_INTERVAL_MS // 2
+        return MEDKIT_SPAWN_INTERVAL_MS
+
+    def current_medkit_heal():
+        if boss_defeated_ms is not None:
+            return 100
+        return MEDKIT_HEAL
+
+    def current_elapsed_ms():
+        return pygame.time.get_ticks() - game_start_ms
+
+    def upgrade_unlocked(next_level):
+        if next_level == 1:
+            return current_elapsed_ms() >= SPECIAL_UPGRADE_UNLOCK_MS
+        if next_level == 2:
+            return current_elapsed_ms() >= max_upgrade_unlock_ms
+        return True
+
+    def upgrade_lock_message(next_level):
+        if next_level == 1:
+            return 'Armas especiais liberadas em 1min10s!'
+        if next_level == 2:
+            return 'Armas max liberadas 20s antes do Minotauro!'
+        return ''
+
     def normal_enemy_count():
         return sum(1 for enemy in enemies if not isinstance(enemy, Minotauro))
 
@@ -471,7 +590,13 @@ def game_screen(screen, assets):
         now = pygame.time.get_ticks()
         boss_spawn_ms = game_start_ms + max_wave_reached_ms + BOSS_SPAWN_DELAY_AFTER_MAX_WAVE_MS
         if not boss_spawned and now >= boss_spawn_ms:
+            enemies.clear()
+            spells.clear()
+            arrows.clear()
+            contact_damage_cooldowns.clear()
+            attack_hit_enemies.clear()
             enemies.append(_spawn_boss(map_width, map_height, assets))
+            _play_sound(assets[SFX_MINOTAUR_ENTRY], repeats=5)
             boss_spawned = True
             return
 
@@ -510,11 +635,10 @@ def game_screen(screen, assets):
         else:
             death_sound = SFX_ENEMY_DEATH
 
-        death_channel = pygame.mixer.find_channel(True)
-        if death_channel:
-            death_channel.play(assets[death_sound])
+        if enemy.kind == ENEMY_MINOTAURO:
+            _play_sound(assets[death_sound], repeats=5)
         else:
-            assets[death_sound].play()
+            _play_sound(assets[death_sound])
         player.coins += enemy.coins_reward
         player.score += enemy.coins_reward
         enemies.remove(enemy)
@@ -522,6 +646,8 @@ def game_screen(screen, assets):
         if enemy.kind == ENEMY_MINOTAURO:
             boss_defeated_ms = pygame.time.get_ticks()
             next_spawn_ms = boss_defeated_ms + POST_BOSS_RESUME_DELAY_MS
+            player.max_health = 300
+            player.health = player.max_health
             return f'Chefão Minotauro derrotado! +{enemy.coins_reward} moedas'
         return f'+{enemy.coins_reward} moedas'
 
@@ -642,12 +768,13 @@ def game_screen(screen, assets):
 
             if shop_upgrade_pressed is not None:
                 w = WEAPON_ORDER[shop_upgrade_pressed]
+                next_level = weapon_upgrades[w] + 1
                 if w not in owned_weapons:
                     message = f'Compre {w} primeiro!'
-                elif not fire_phase_unlocked():
-                    message = 'Upgrades liberados na fase de fogo!'
                 elif weapon_upgrades[w] >= 2:
                     message = f'{w} ja esta no nivel maximo!'
+                elif not upgrade_unlocked(next_level):
+                    message = upgrade_lock_message(next_level)
                 elif player.coins >= WEAPON_UPGRADE_PRICE:
                     player.coins -= WEAPON_UPGRADE_PRICE
                     weapon_upgrades[w] += 1
@@ -692,8 +819,9 @@ def game_screen(screen, assets):
             # Dano por contato com o player.
             player_contact_rect = _shrink_rect(player_rect, 0.75, 0.70)
             enemy_contact_rect = _enemy_collision_rect(enemy)
+            enemy_damage_rect = _enemy_damage_rect(enemy)
 
-            if enemy_contact_rect.colliderect(player_contact_rect):
+            if enemy_damage_rect.colliderect(player_contact_rect):
                 now = pygame.time.get_ticks()
                 if enemy.kind == ENEMY_MINOTAURO:
                     contact_cooldown = MINOTAURO_DAMAGE_COOLDOWN_MS
@@ -704,14 +832,14 @@ def game_screen(screen, assets):
                 last_contact_damage = contact_damage_cooldowns.get(enemy_key, -contact_cooldown)
 
                 if enemy.damage > 0 and now - last_contact_damage >= contact_cooldown:
-                    player.take_damage(enemy.damage)
+                    player.take_damage(max(1, enemy.damage // 2))
                     if enemy.kind == ENEMY_MINOTAURO:
                         damage_sound = SFX_MINOTAUR_ATTACK
                     elif enemy.kind in ('lobisomem', ENEMY_LOBISOMEM_EVO, ENEMY_LEAO, ENEMY_LEAO_EVO):
                         damage_sound = SFX_MONSTER_BITE
                     else:
                         damage_sound = SFX_HIT
-                    assets[damage_sound].play()
+                    _play_sound(assets[damage_sound], repeats=5 if enemy.kind == ENEMY_MINOTAURO else 1)
                     contact_damage_cooldowns[enemy_key] = now
 
                 if player.health <= 0:
@@ -761,13 +889,14 @@ def game_screen(screen, assets):
             mx = map_width // 2 + int(radius * vec.x)
             my = map_height // 2 + int(radius * vec.y)
             medkit_spawns.append([mx, my])
-            next_medkit_ms = now_ms + MEDKIT_SPAWN_INTERVAL_MS
+            next_medkit_ms = now_ms + current_medkit_spawn_interval()
 
         for mk in medkit_spawns[:]:
             mk_rect = pygame.Rect(mk[0] - 36, mk[1] - 36, 72, 72)
             if player_rect.colliderect(mk_rect):
-                player.health = min(player.max_health, player.health + MEDKIT_HEAL)
-                message = f'+{MEDKIT_HEAL} VIDA'
+                heal_amount = current_medkit_heal()
+                player.health = min(player.max_health, player.health + heal_amount)
+                message = f'+{heal_amount} VIDA'
                 message_timer = pygame.time.get_ticks() + 1000
                 medkit_spawns.remove(mk)
 
@@ -859,14 +988,14 @@ def game_screen(screen, assets):
                     if lvl >= 2:
                         status = 'MAX (Espacial)'
                         cor = (120, 180, 255)
-                    elif not fire_phase_unlocked():
-                        status = 'Upgrade na fase de fogo'
+                    elif not upgrade_unlocked(lvl + 1):
+                        status = 'Especial em 1min10s' if lvl == 0 else 'MAX antes do Minotauro'
                         cor = (160, 160, 160)
                     elif lvl == 1:
-                        status = f'Espacial: {WEAPON_UPGRADE_PRICE} moedas'
+                        status = f'MAX: {WEAPON_UPGRADE_PRICE} moedas'
                         cor = (255, 220, 80)
                     else:
-                        status = f'Upgradar: {WEAPON_UPGRADE_PRICE} moedas'
+                        status = f'Especial: {WEAPON_UPGRADE_PRICE} moedas'
                         cor = (255, 255, 255)
                 else:
                     status = f'Comprar: {WEAPON_BUY_PRICES[w]} moedas'
@@ -925,7 +1054,7 @@ def game_screen(screen, assets):
             screen.blit(player_frame, (cx, cy))
 
         # HUD
-        hud = pygame.Surface((460, 190), pygame.SRCALPHA)
+        hud = pygame.Surface((760, 220), pygame.SRCALPHA)
         hud.fill((0, 0, 0, 140))
         screen.blit(hud, (18, 18))
         _draw_text(screen, font_mid, f'Vida: {player.health}/{player.max_health}', 30, 28)
@@ -935,7 +1064,10 @@ def game_screen(screen, assets):
         if bow_ready_on_right_click():
             weapon_label += ' | Direito: Arco'
         _draw_text(screen, font_small, weapon_label, 30, 130)
-        _draw_text(screen, font_small, 'Mover: WASD | Atacar: J ou ESPACO', 30, 158)
+        attack_hint = 'Atacar: Mouse esquerdo'
+        if bow_ready_on_right_click():
+            attack_hint += ' | Arco: Mouse direito'
+        _draw_text(screen, font_small, f'Mover: WASD | {attack_hint}', 30, 158)
 
         if message_timer > pygame.time.get_ticks():
             msg = font_mid.render(message, True, (255, 240, 120))
@@ -945,7 +1077,7 @@ def game_screen(screen, assets):
             screen.blit(msg, (LARGURA_TELA // 2 - msg.get_width() // 2, 60))
 
         if player.health <= 0:
-            state = _show_defeat_screen(screen)
+            state = _show_defeat_screen(screen, player_name, player.score)
             running = False
 
         pygame.display.flip()

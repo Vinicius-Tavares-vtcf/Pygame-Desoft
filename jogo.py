@@ -19,11 +19,12 @@ pygame.display.set_caption('O Coliseu')
 assets = load_assets()
 
 state = INIT
+player_name = ''
 while state != QUIT:
     if state == INIT:
-        state = init_screen(window, assets)
+        state, player_name = init_screen(window, assets, player_name)
     if state == GAME:
-        state = game_screen(window,assets)
+        state = game_screen(window, assets, player_name)
             #state = game_screen(window, assets)
     #      else:
 #      state = game_over(window)

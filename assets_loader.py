@@ -47,6 +47,7 @@ SFX_LION_DEATH = 'sfx_lion_death'
 SFX_MAGE_DEATH = 'sfx_mage_death'
 SFX_MINOTAUR_DEATH = 'sfx_minotaur_death'
 SFX_MINOTAUR_ATTACK = 'sfx_minotaur_attack'
+SFX_MINOTAUR_ENTRY = 'sfx_minotaur_entry'
 
 
 def _load_optional_sound(folder, pattern):
@@ -256,6 +257,7 @@ def load_assets():
     assets[SFX_HIT] = pygame.mixer.Sound(path.join(SND_DIR, 'combat', 'hit.wav.mp3'))
     assets[SFX_MONSTER_BITE] = pygame.mixer.Sound(path.join(SND_DIR, 'combat', 'monsterbite.waw.mp3'))
     assets[SFX_MINOTAUR_ATTACK] = pygame.mixer.Sound(path.join(SND_DIR, 'combat', 'ataqueminotauro.waw.mp3'))
+    assets[SFX_MINOTAUR_ENTRY] = pygame.mixer.Sound(path.join(SND_DIR, 'combat', 'entradaminotauro.waw.mp3'))
     assets[SFX_FIREBALL] = pygame.mixer.Sound(path.join(SND_DIR, 'magic', 'fireball.wav.mp3'))
     assets[SFX_ENEMY_DEATH] = pygame.mixer.Sound(path.join(SND_DIR, 'enemy', 'death.wav.mp3'))
     assets[SFX_MONSTER_DEATH] = pygame.mixer.Sound(path.join(SND_DIR, 'enemy', 'monsterdeath.waw.mp3'))
@@ -267,6 +269,7 @@ def load_assets():
     assets[SFX_HIT].set_volume(0.5)
     assets[SFX_MONSTER_BITE].set_volume(0.6)
     assets[SFX_MINOTAUR_ATTACK].set_volume(1.0)
+    assets[SFX_MINOTAUR_ENTRY].set_volume(1.0)
     assets[SFX_FIREBALL].set_volume(0.5)
     assets[SFX_ENEMY_DEATH].set_volume(0.6)
     assets[SFX_MONSTER_DEATH].set_volume(0.6)
