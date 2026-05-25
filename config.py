@@ -7,7 +7,8 @@ FPS = 60
 
 LARGURA_TELA = 1920
 ALTURA_TELA = 1080
-INIT = 0 
+INIT = 0
 GAME = 1
 QUIT = 2
+GAME_OVER = 3
 #Ponto Arena

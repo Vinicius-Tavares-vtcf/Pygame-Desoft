@@ -7,7 +7,8 @@ from os import path
 from init_screen import *
 from assets_loader import *
 import ctypes
-from game_screen import * 
+from game_screen import *
+from game_over import *
 ctypes.windll.user32.SetProcessDPIAware()
 pygame.init()
 pygame.mixer.init()
@@ -25,10 +26,8 @@ while state != QUIT:
         state, player_name = init_screen(window, assets, player_name)
     if state == GAME:
         state = game_screen(window, assets, player_name)
-            #state = game_screen(window, assets)
-    #      else:
-#      state = game_over(window)
-#          state = QUIT
+    if state == GAME_OVER:
+        state = game_over(window, assets)
 
 # ===== Finalização =====
 pygame.quit()  # Função do PyGame que finaliza os recursos utilizados
