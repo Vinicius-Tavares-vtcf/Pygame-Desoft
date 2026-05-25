@@ -568,7 +568,7 @@ class Minotauro:
     }
     DAMAGE = 30
     COINS_RANGE = (6, 12)
-    SPEED_RANGE = (4, 8)
+    SPEED_RANGE = (5,6)
     SCALE = 4.0
     FRAME_SPEED = 0.10
     FRAME_COLUMNS = 24

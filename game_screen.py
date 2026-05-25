@@ -9,6 +9,12 @@ from ranking import save_score, sorted_ranking
 
 spells = []
 arrows = []
+
+def _play_sound(sound, repeats=1):
+    for _ in range(repeats):
+        channel = pygame.mixer.find_channel(True)
+        if channel:
+            channel.play(sound)
 def _draw_text(screen, font, text, x, y, color=(255, 255, 255)):
     surf = font.render(text, True, color)
     screen.blit(surf, (x, y))
@@ -1060,20 +1066,27 @@ def game_screen(screen, assets, player_name='Jogador'):
             screen.blit(player_frame, (cx, cy))
 
         # HUD
+        elapsed_seconds = (pygame.time.get_ticks() - game_start_ms) // 1000
+
+        minutes = elapsed_seconds // 60
+        seconds = elapsed_seconds % 60
+
+        timer_text = f'Tempo: {minutes:02}:{seconds:02}'
         hud = pygame.Surface((760, 220), pygame.SRCALPHA)
         hud.fill((0, 0, 0, 140))
         screen.blit(hud, (18, 18))
         _draw_text(screen, font_mid, f'Vida: {player.health}/{player.max_health}', 30, 28)
         _draw_text(screen, font_mid, f'Moedas: {player.coins}', 30, 62)
         _draw_text(screen, font_mid, f'Pontos: {player.score}', 30, 96)
+        _draw_text(screen, font_mid, timer_text, 30, 130)
         weapon_label = f'Arma: {player.weapon}'
         if bow_ready_on_right_click():
             weapon_label += ' | Direito: Arco'
-        _draw_text(screen, font_small, weapon_label, 30, 130)
+        _draw_text(screen, font_small, weapon_label, 30, 158)
         attack_hint = 'Atacar: Mouse esquerdo'
         if bow_ready_on_right_click():
             attack_hint += ' | Arco: Mouse direito'
-        _draw_text(screen, font_small, f'Mover: WASD | {attack_hint}', 30, 158)
+        _draw_text(screen, font_small, f'Mover: WASD | {attack_hint}', 30, 192)
 
         if message_timer > pygame.time.get_ticks():
             msg = font_mid.render(message, True, (255, 240, 120))
